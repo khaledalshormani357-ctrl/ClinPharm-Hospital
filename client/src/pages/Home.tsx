@@ -1,33 +1,125 @@
-import { useAuth } from "@/_core/hooks/useAuth";
+import { useMemo, useState } from "react";
+import {
+  Activity,
+  AlertTriangle,
+  ArrowLeft,
+  ArrowRight,
+  BookOpen,
+  BrainCircuit,
+  Calculator,
+  CheckCircle2,
+  ChevronDown,
+  ClipboardCheck,
+  FileText,
+  FlaskConical,
+  GraduationCap,
+  HeartPulse,
+  LayoutDashboard,
+  MessageSquareText,
+  Pill,
+  Plus,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Stethoscope,
+  Target,
+  Users,
+  X,
+  Zap,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
-import { Streamdown } from 'streamdown';
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { calculateCrCl } from "@/lib/clinical";
 
-/**
- * All content in this page are only for example, replace with your own feature implementation
- * When building pages, remember your instructions in Frontend Workflow, Frontend Best Practices, Design Guide and Common Pitfalls
- */
+type Module = { label: string; icon: typeof LayoutDashboard; tone: string; description: string };
+
+const modules: Module[] = [
+  { label: "Patient care", icon: Users, tone: "teal", description: "Patients, rounds and medication reviews" },
+  { label: "Clinical copilot", icon: BrainCircuit, tone: "violet", description: "Structured patient assessment workflow" },
+  { label: "Interventions", icon: ClipboardCheck, tone: "amber", description: "Document and follow up interventions" },
+  { label: "Medication reconciliation", icon: Pill, tone: "blue", description: "Admission and discharge reconciliation" },
+  { label: "Drug information", icon: FlaskConical, tone: "rose", description: "Evidence-linked medication answers" },
+  { label: "Calculators", icon: Calculator, tone: "indigo", description: "Validated clinical calculations" },
+  { label: "Guidelines", icon: BookOpen, tone: "cyan", description: "Guidelines and evidence hierarchy" },
+  { label: "Training hub", icon: GraduationCap, tone: "orange", description: "Cases, questions and competency" },
+];
+
+const copilotSteps = [
+  ["Patient identification", "Confirm demographics, location and clinical context"],
+  ["Data collection", "Gather history, labs, allergies and current therapy"],
+  ["Clinical assessment", "Frame diagnosis, goals and patient-specific risks"],
+  ["Problem identification", "Screen for drug-related problems and gaps"],
+  ["Drug therapy assessment", "Assess indication, efficacy, safety and adherence"],
+  ["Evidence search", "Locate source, evidence level and guideline currency"],
+  ["Recommendation", "Prepare a traceable recommendation for review"],
+  ["Monitoring", "Define parameters, targets and follow-up timing"],
+  ["Follow-up", "Track response, outcomes and unresolved issues"],
+  ["Documentation", "Generate SOAP note and intervention record"],
+] as const;
+
+const alerts = [
+  { title: "High-alert medication", detail: "Insulin order requires independent verification", severity: "high", time: "8 min ago" },
+  { title: "Renal dose review", detail: "Enoxaparin needs reassessment after SCr update", severity: "medium", time: "24 min ago" },
+  { title: "Evidence update", detail: "AHA/ACC heart failure guideline marked UPDATED", severity: "info", time: "Today" },
+];
+
+const patients = [
+  { initials: "MA", name: "M. Ahmed", id: "PT-10482", ward: "Cardiology · 4B", issue: "Anticoagulation review", status: "Needs review", color: "bg-cyan-100 text-cyan-700" },
+  { initials: "SN", name: "S. Noura", id: "PT-10477", ward: "Internal medicine · 3A", issue: "Medication reconciliation", status: "In progress", color: "bg-violet-100 text-violet-700" },
+  { initials: "KH", name: "K. Hassan", id: "PT-10461", ward: "ICU · 2C", issue: "TDM follow-up", status: "Follow-up due", color: "bg-amber-100 text-amber-700" },
+];
+
+function SectionTitle({ eyebrow, title, action }: { eyebrow: string; title: string; action?: string }) {
+  return <div className="flex items-end justify-between gap-4"><div><p className="eyebrow">{eyebrow}</p><h2 className="section-title">{title}</h2></div>{action && <button className="text-sm font-semibold text-teal-700 hover:text-teal-900">{action} <ArrowRight className="ml-1 inline h-4 w-4" /></button>}</div>;
+}
+
 export default function Home() {
-  // The useAuth hook provides authentication state.
-  // To implement login/logout, call logout(), or start login from an event
-  // handler: onClick={() => startLogin()} (imported from "@/const"). Never call
-  // startLogin() during render (no href={startLogin()}) — it mints a one-time
-  // nonce cookie and must run only at the moment of navigation.
-  let { user, loading, error, isAuthenticated, logout } = useAuth();
+  const { user, loading } = useAuth();
+  const [activeModule, setActiveModule] = useState("Overview");
+  const [copilotOpen, setCopilotOpen] = useState(false);
+  const [step, setStep] = useState(0);
+  const [search, setSearch] = useState("");
+  const [alertOpen, setAlertOpen] = useState(true);
+  const [calculator, setCalculator] = useState("CrCl");
+  const [weight, setWeight] = useState("72");
+  const [scr, setScr] = useState("1.2");
+  const [sourceVerified, setSourceVerified] = useState(false);
 
-  // If theme is switchable in App.tsx, we can implement theme toggling like this:
-  // const { theme, toggleTheme } = useTheme();
+  const filteredPatients = useMemo(() => patients.filter((patient) => `${patient.name} ${patient.id} ${patient.issue}`.toLowerCase().includes(search.toLowerCase())), [search]);
+  const crcl = calculateCrCl(67, Number(weight), Number(scr), "female");
 
-  return (
-    <div className="min-h-screen flex flex-col">
-      <main>
-        {/* Example: lucide-react for icons */}
-        <Loader2 className="animate-spin" />
-        Example Page
-        {/* Example: Streamdown for markdown rendering */}
-        <Streamdown>Any **markdown** content</Streamdown>
-        <Button variant="default">Example Button</Button>
-      </main>
-    </div>
-  );
+  if (loading) return <div className="min-h-screen grid place-items-center bg-[#f5f8f7]"><Activity className="h-6 w-6 animate-pulse text-teal-700" /></div>;
+
+  return <div className="min-h-screen bg-[#f5f8f7] text-slate-900">
+    <aside className="fixed inset-y-0 left-0 z-30 hidden w-[250px] flex-col border-r border-slate-200 bg-[#102b2c] text-white lg:flex">
+      <div className="flex h-24 items-center gap-3 border-b border-white/10 px-7"><div className="grid h-10 w-10 place-items-center rounded-xl bg-[#bdebdc] text-[#102b2c]"><HeartPulse className="h-6 w-6" /></div><div><div className="font-display text-lg font-bold tracking-tight">ClinPharm</div><div className="text-[10px] uppercase tracking-[0.18em] text-[#9ec2bd]">Hospital intelligence</div></div></div>
+      <div className="px-5 py-7"><p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[#719997]">Workspace</p>{["Overview", "Patients", "Today's rounds", "Clinical copilot", "Interventions", "Medication review", "Reconciliation", "Alerts"].map((item, index) => { const Icon = [LayoutDashboard, Users, Activity, BrainCircuit, ClipboardCheck, Pill, FileText, AlertTriangle][index]; return <button key={item} onClick={() => setActiveModule(item)} className={`nav-item ${activeModule === item ? "nav-item-active" : ""}`}><span className="grid h-8 w-8 place-items-center rounded-lg bg-white/5"><Icon className="h-4 w-4" /></span>{item}{item === "Interventions" && <span className="ml-auto rounded-full bg-[#f3c969] px-2 py-0.5 text-[10px] font-bold text-[#513c0b]">12</span>}</button>; })}</div>
+      <div className="mt-auto px-5 pb-7"><p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[#719997]">Learning & tools</p>{["Drug information", "Calculators", "Guidelines", "Training hub", "Clinical logbook", "Cases", "Questions", "Progress"].map((item, index) => { const Icon = [FlaskConical, Calculator, BookOpen, GraduationCap, FileText, Stethoscope, MessageSquareText, Target][index]; return <button key={item} onClick={() => setActiveModule(item)} className={`nav-item ${activeModule === item ? "nav-item-active" : ""}`}><span className="grid h-8 w-8 place-items-center rounded-lg bg-white/5"><Icon className="h-4 w-4" /></span>{item}</button>; })}</div>
+    </aside>
+
+    <main className="lg:pl-[250px]">
+      <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-[#f5f8f7]/90 px-5 py-4 backdrop-blur-xl sm:px-8"><div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4"><div className="flex items-center gap-3 lg:hidden"><div className="grid h-9 w-9 place-items-center rounded-xl bg-[#102b2c] text-[#bdebdc]"><HeartPulse className="h-5 w-5" /></div><span className="font-display font-bold">ClinPharm</span></div><div className="hidden items-center gap-2 text-sm text-slate-500 sm:flex"><span className="font-semibold text-slate-900">Clinical workspace</span><span>/</span><span>{activeModule}</span></div><div className="flex flex-1 items-center justify-end gap-3"><div className="relative hidden w-full max-w-[290px] md:block"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search patients, cases..." className="h-10 rounded-xl border-slate-200 bg-white pl-9 shadow-sm" /></div><button onClick={() => setAlertOpen(true)} className="relative grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm"><AlertTriangle className="h-4 w-4" /><span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white" /></button><div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white py-1.5 pl-1.5 pr-3 shadow-sm"><div className="grid h-7 w-7 place-items-center rounded-lg bg-[#dff4ed] text-xs font-bold text-teal-800">{user?.name?.slice(0, 1) || "A"}</div><span className="hidden text-sm font-semibold sm:inline">{user?.name || "Dr. Amina"}</span><ChevronDown className="h-3.5 w-3.5 text-slate-400" /></div></div></div></header>
+
+      <div className="mx-auto max-w-[1500px] px-5 pb-12 pt-8 sm:px-8">{activeModule !== "Overview" && <div className="mb-8 rounded-2xl border border-[#cfe5df] bg-white p-6 shadow-sm"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><p className="eyebrow">Clinical workspace / {activeModule}</p><h2 className="mt-1 font-display text-2xl font-extrabold tracking-[-0.03em]">{activeModule}</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">This workspace is structured around evidence traceability, patient safety, and an auditable clinical reasoning trail.</p></div><Button onClick={() => setActiveModule("Overview")} variant="outline" className="rounded-xl">Back to overview</Button></div><div className="mt-5 grid gap-3 sm:grid-cols-3"><div className="rounded-xl bg-[#eaf7f2] p-4"><p className="text-xs font-bold text-teal-800">Ready queue</p><p className="mt-2 font-display text-2xl font-bold">{activeModule === "Patients" ? "24" : activeModule === "Interventions" ? "12" : "08"}</p><p className="mt-1 text-xs text-slate-500">Items requiring review</p></div><div className="rounded-xl bg-amber-50 p-4"><p className="text-xs font-bold text-amber-800">Priority signal</p><p className="mt-2 font-display text-2xl font-bold">03</p><p className="mt-1 text-xs text-slate-500">Safety checks due today</p></div><div className="rounded-xl bg-violet-50 p-4"><p className="text-xs font-bold text-violet-800">Traceability</p><p className="mt-2 font-display text-2xl font-bold">100%</p><p className="mt-1 text-xs text-slate-500">Recommendations require source</p></div></div></div>}<div className="mb-8 flex flex-col justify-between gap-5 md:flex-row md:items-end"><div><p className="eyebrow">{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</p><h1 className="hero-title">Good morning, <span>Dr. {user?.name?.split(" ")[0] || "Amina"}.</span></h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Your clinical workspace is ready. Review priority issues, continue your copilot cases, and keep every recommendation traceable to its evidence.</p></div><Button onClick={() => { setCopilotOpen(true); setStep(0); setSourceVerified(false); }} className="h-12 rounded-xl bg-[#102b2c] px-5 font-semibold text-white shadow-[0_8px_20px_rgba(16,43,44,0.18)] hover:bg-[#1a4a4b]"><Plus className="mr-2 h-4 w-4" /> Start patient assessment</Button></div>
+
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Card className="stat-card stat-accent-teal"><CardContent className="p-5"><div className="mb-6 flex items-start justify-between"><div className="stat-icon bg-[#dff4ed] text-teal-800"><Users className="h-5 w-5" /></div><span className="trend trend-up">+3 today</span></div><p className="metric">24</p><p className="mt-1 text-sm text-slate-500">Active patients</p><div className="mt-4 h-1 rounded-full bg-slate-100"><div className="h-1 w-[68%] rounded-full bg-teal-600" /></div></CardContent></Card><Card className="stat-card stat-accent-violet"><CardContent className="p-5"><div className="mb-6 flex items-start justify-between"><div className="stat-icon bg-violet-100 text-violet-700"><ClipboardCheck className="h-5 w-5" /></div><span className="trend trend-up">82% accepted</span></div><p className="metric">18</p><p className="mt-1 text-sm text-slate-500">Open interventions</p><div className="mt-4 h-1 rounded-full bg-slate-100"><div className="h-1 w-[82%] rounded-full bg-violet-500" /></div></CardContent></Card><Card className="stat-card stat-accent-amber"><CardContent className="p-5"><div className="mb-6 flex items-start justify-between"><div className="stat-icon bg-amber-100 text-amber-700"><BrainCircuit className="h-5 w-5" /></div><span className="trend trend-neutral">3 due today</span></div><p className="metric">7</p><p className="mt-1 text-sm text-slate-500">Copilot cases</p><div className="mt-4 h-1 rounded-full bg-slate-100"><div className="h-1 w-[54%] rounded-full bg-amber-500" /></div></CardContent></Card><Card className="stat-card stat-accent-rose"><CardContent className="p-5"><div className="mb-6 flex items-start justify-between"><div className="stat-icon bg-rose-100 text-rose-700"><Target className="h-5 w-5" /></div><span className="trend trend-up">+12% this week</span></div><p className="metric">76%</p><p className="mt-1 text-sm text-slate-500">Learning progress</p><div className="mt-4 h-1 rounded-full bg-slate-100"><div className="h-1 w-[76%] rounded-full bg-rose-500" /></div></CardContent></Card></div>
+
+        <div className="mt-9 grid gap-6 xl:grid-cols-[1.45fr_0.95fr]"><section><SectionTitle eyebrow="Clinical priority" title="Patients requiring attention" action="View all patients" /><div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="grid grid-cols-[1.45fr_1fr_1fr_auto] border-b border-slate-100 bg-slate-50/70 px-5 py-3 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400"><span>Patient</span><span>Location</span><span>Clinical focus</span><span>Status</span></div>{filteredPatients.map((patient) => <div key={patient.id} className="grid grid-cols-[1.45fr_1fr_1fr_auto] items-center gap-3 border-b border-slate-100 px-5 py-4 last:border-0"><div className="flex items-center gap-3"><div className={`grid h-9 w-9 place-items-center rounded-xl text-xs font-bold ${patient.color}`}>{patient.initials}</div><div><p className="text-sm font-bold text-slate-800">{patient.name}</p><p className="text-xs text-slate-400">{patient.id}</p></div></div><span className="text-xs font-medium text-slate-500">{patient.ward}</span><span className="text-xs font-semibold text-slate-700">{patient.issue}</span><Badge className="whitespace-nowrap border-0 bg-slate-100 text-[10px] text-slate-600">{patient.status}</Badge></div>)}{filteredPatients.length === 0 && <div className="p-8 text-center text-sm text-slate-500">No patient matches this search.</div>}</div></section><section><SectionTitle eyebrow="Safety first" title="Priority alerts" action="View alert center" /><div className="mt-4 space-y-3">{alerts.map((alert) => <div key={alert.title} className="alert-card"><div className={`mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl ${alert.severity === "high" ? "bg-rose-100 text-rose-600" : alert.severity === "medium" ? "bg-amber-100 text-amber-700" : "bg-cyan-100 text-cyan-700"}`}>{alert.severity === "info" ? <Sparkles className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}</div><div className="min-w-0"><div className="flex items-center gap-2"><p className="truncate text-sm font-bold text-slate-800">{alert.title}</p>{alert.severity === "high" && <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />}</div><p className="mt-1 text-xs leading-5 text-slate-500">{alert.detail}</p><p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">{alert.time}</p></div><ArrowRight className="ml-auto h-4 w-4 shrink-0 text-slate-300" /></div>)}</div></section></div>
+
+        <div className="mt-10 grid gap-6 xl:grid-cols-[1.45fr_0.95fr]"><section><SectionTitle eyebrow="Clinical reasoning" title="Continue with Copilot" action="Open case list" /><Card className="copilot-card mt-4 overflow-hidden"><CardContent className="p-0"><div className="flex flex-col justify-between gap-6 p-6 sm:flex-row sm:items-center"><div className="flex items-center gap-4"><div className="grid h-14 w-14 place-items-center rounded-2xl bg-[#ccefe4] text-[#135b58]"><BrainCircuit className="h-7 w-7" /></div><div><div className="mb-1 flex items-center gap-2"><Badge className="border-0 bg-[#e5f7f0] text-[10px] uppercase tracking-wider text-teal-800">In progress</Badge><span className="text-xs text-slate-400">Updated 12 min ago</span></div><h3 className="font-display text-lg font-bold text-slate-900">M. Ahmed · Anticoagulation review</h3><p className="mt-1 text-sm text-slate-500">Step {step + 1} of {copilotSteps.length} · {copilotSteps[step][0]}</p></div></div><Button onClick={() => setCopilotOpen(true)} variant="outline" className="h-10 rounded-xl border-slate-200 font-semibold">Resume case <ArrowRight className="ml-2 h-4 w-4" /></Button></div><div className="border-t border-slate-100 px-6 py-4"><div className="mb-3 flex justify-between text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400"><span>Clinical pathway</span><span>{Math.round(((step + 1) / copilotSteps.length) * 100)}%</span></div><Progress value={((step + 1) / copilotSteps.length) * 100} className="h-2 bg-slate-100" /></div></CardContent></Card></section><section><SectionTitle eyebrow="Learning pulse" title="Your study plan" action="Open training hub" /><Card className="mt-4 border-slate-200 shadow-sm"><CardContent className="p-6"><div className="flex items-start justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Week 14 of 24</p><h3 className="mt-2 font-display text-lg font-bold">Heart failure pharmacotherapy</h3></div><div className="grid h-10 w-10 place-items-center rounded-xl bg-amber-100 text-amber-700"><GraduationCap className="h-5 w-5" /></div></div><div className="mt-5 flex items-center gap-4"><div className="relative grid h-16 w-16 place-items-center rounded-full" style={{ background: "conic-gradient(#e7b848 0 76%, #edf1ef 76% 100%)" }}><div className="grid h-12 w-12 place-items-center rounded-full bg-white text-sm font-bold">76%</div></div><div><p className="text-sm font-semibold">Strong momentum</p><p className="mt-1 text-xs leading-5 text-slate-500">2 cases and 8 questions remain this week.</p></div></div><Button variant="ghost" className="mt-5 h-9 w-full rounded-lg bg-slate-50 text-sm font-semibold text-slate-700">Continue today's session <ArrowRight className="ml-2 h-4 w-4" /></Button></CardContent></Card></section></div>
+
+        <div className="mt-10"><SectionTitle eyebrow="Workspace modules" title="Built for the clinical workflow" /><div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{modules.map((module) => <button key={module.label} onClick={() => setActiveModule(module.label)} className="module-card group text-left"><div className={`module-icon tone-${module.tone}`}><module.icon className="h-5 w-5" /></div><div className="mt-4 flex items-center justify-between gap-2"><h3 className="text-sm font-bold text-slate-800">{module.label}</h3><ArrowRight className="h-4 w-4 text-slate-300 transition group-hover:translate-x-1 group-hover:text-teal-600" /></div><p className="mt-1 text-xs leading-5 text-slate-500">{module.description}</p></button>)}</div></div>
+
+        <div className="mt-10 rounded-2xl border border-[#cfe5df] bg-[#eaf7f2] px-5 py-4 text-xs leading-5 text-[#315b56]"><div className="flex items-start gap-3"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-teal-700" /><p><strong>Clinical safety notice:</strong> ClinPharm is a clinical decision-support and educational tool. It does not replace clinical judgment, institutional protocols, licensed drug references, or the treating healthcare team. Always verify the original source before acting on a high-risk recommendation.</p></div></div>
+      </div>
+    </main>
+
+    {alertOpen && <div className="fixed bottom-5 right-5 z-40 hidden w-[340px] rounded-2xl border border-rose-200 bg-white p-4 shadow-[0_20px_60px_rgba(15,23,42,0.16)] sm:block"><div className="flex items-start gap-3"><div className="grid h-9 w-9 place-items-center rounded-xl bg-rose-100 text-rose-600"><AlertTriangle className="h-4 w-4" /></div><div className="flex-1"><div className="flex items-center justify-between"><p className="text-sm font-bold">Safety alert</p><button onClick={() => setAlertOpen(false)}><X className="h-4 w-4 text-slate-400" /></button></div><p className="mt-1 text-xs leading-5 text-slate-500">1 high-risk medication requires verification before rounds.</p><button onClick={() => setAlertOpen(false)} className="mt-3 text-xs font-bold text-rose-600">Review alert center <ArrowRight className="ml-1 inline h-3 w-3" /></button></div></div></div>}
+
+    {copilotOpen && <div className="fixed inset-0 z-50 grid place-items-center bg-[#102b2c]/40 p-4 backdrop-blur-sm"><div className="max-h-[92vh] w-full max-w-3xl overflow-auto rounded-3xl border border-white/50 bg-[#f8fbfa] shadow-2xl"><div className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-5"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-[#dff4ed] text-teal-800"><BrainCircuit className="h-5 w-5" /></div><div><p className="eyebrow">Clinical Pharmacist Copilot</p><h2 className="font-display text-xl font-bold">New patient assessment</h2></div></div><button onClick={() => setCopilotOpen(false)} className="grid h-9 w-9 place-items-center rounded-lg hover:bg-slate-100"><X className="h-5 w-5 text-slate-500" /></button></div><div className="p-6"><div className="mb-8 flex items-center gap-1 overflow-x-auto pb-2">{copilotSteps.map((item, index) => <div key={item[0]} className="flex min-w-max items-center gap-1"><div className={`grid h-8 w-8 place-items-center rounded-full text-xs font-bold ${index < step ? "bg-teal-700 text-white" : index === step ? "bg-[#f3c969] text-[#513c0b]" : "bg-slate-200 text-slate-500"}`}>{index < step ? <CheckCircle2 className="h-4 w-4" /> : index + 1}</div>{index < copilotSteps.length - 1 && <div className={`h-0.5 w-5 ${index < step ? "bg-teal-600" : "bg-slate-200"}`} />}</div>)}</div><div className="rounded-2xl border border-slate-200 bg-white p-6"><div className="flex items-start gap-4"><div className="grid h-11 w-11 place-items-center rounded-xl bg-[#e9f5f0] text-teal-700"><Stethoscope className="h-5 w-5" /></div><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-teal-700">Step {step + 1} of {copilotSteps.length}</p><h3 className="mt-1 font-display text-xl font-bold">{copilotSteps[step][0]}</h3><p className="mt-2 text-sm leading-6 text-slate-500">{copilotSteps[step][1]}. Complete this stage before proceeding so the clinical reasoning trail remains auditable.</p></div></div>{step === 0 && <div className="mt-6 grid gap-4 sm:grid-cols-2"><label className="field-label">Patient ID<Input placeholder="e.g. PT-10482" /></label><label className="field-label">Patient initials<Input placeholder="e.g. M.A." /></label><label className="field-label">Age<Input type="number" placeholder="67" /></label><label className="field-label">Ward / bed<Input placeholder="Cardiology · 4B-12" /></label></div>}{step === 1 && <div className="mt-6 grid gap-4 sm:grid-cols-2"><label className="field-label">Chief complaint<Input placeholder="Reason for admission" /></label><label className="field-label">Allergies<Input placeholder="Document allergies or NKDA" /></label><label className="field-label sm:col-span-2">Current therapy<textarea className="min-h-24 rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-teal-500" placeholder="Medication, dose, route, frequency..." /></label></div>}{step === 5 && <div className="mt-6 rounded-xl border border-cyan-200 bg-cyan-50 p-4"><div className="flex gap-3"><BookOpen className="h-5 w-5 shrink-0 text-cyan-700" /><div><p className="text-sm font-bold text-cyan-900">Evidence gate</p><p className="mt-1 text-xs leading-5 text-cyan-800">No recommendation can be finalized without a verifiable guideline, regulatory source, or high-quality evidence reference.</p><Badge className="mt-3 border-0 bg-white text-[10px] text-cyan-800">Source required</Badge></div></div></div>}{step === 6 && <div className="mt-6 rounded-xl border border-rose-200 bg-rose-50 p-4"><div className="flex gap-3"><AlertTriangle className="h-5 w-5 shrink-0 text-rose-600" /><div><p className="text-sm font-bold text-rose-900">HIGH-RISK CLINICAL DECISION</p><p className="mt-1 text-xs leading-5 text-rose-800">Verify the original source and institutional protocol before accepting this recommendation.</p><label className="mt-4 flex items-center gap-2 text-xs font-semibold text-rose-900"><input type="checkbox" checked={sourceVerified} onChange={(event) => setSourceVerified(event.target.checked)} aria-label="Confirm original source verification" /> I confirm source verification is required</label></div></div></div>}</div><div className="mt-5 flex items-center justify-between"><Button variant="ghost" onClick={() => setStep((current) => Math.max(0, current - 1))} disabled={step === 0} className="rounded-xl"><ArrowLeft className="mr-2 h-4 w-4" /> Previous</Button><div className="flex gap-2"><Button variant="outline" onClick={() => setCopilotOpen(false)} className="rounded-xl">Save draft</Button><Button onClick={() => setStep((current) => Math.min(copilotSteps.length - 1, current + 1))} disabled={step === copilotSteps.length - 1 || (step === 6 && !sourceVerified)} className="rounded-xl bg-[#102b2c] text-white hover:bg-[#1a4a4b]">{step === copilotSteps.length - 1 ? "Complete" : "Continue"}<ArrowRight className="ml-2 h-4 w-4" /></Button></div></div></div></div></div>}
+  </div>;
 }
