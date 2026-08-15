@@ -76,3 +76,10 @@
   .hero-title { @apply text-3xl; }
   .section-title { @apply text-lg; }
 }
+
+@layer base {
+  :where(button, a, input, textarea, select):focus-visible {
+    outline: 3px solid #45a99a;
+    outline-offset: 2px;
+  }
+}

@@ -1,0 +1,29 @@
+import { describe, expect, it } from "vitest";
+import { buildSoapNote, detectDrugRelatedProblems, evidenceGate, reconcileMedications, renalDoseAdjustment } from "./clinical-engine";
+
+describe("clinical engine", () => {
+  it("detects interaction, renal risk, and high-alert monitoring", () => {
+    const problems = detectDrugRelatedProblems([{ name: "warfarin", doseMg: 5, frequency: "daily", highAlert: true }, { name: "ibuprofen", doseMg: 400, frequency: "q8h" }, { name: "enoxaparin", doseMg: 40, frequency: "daily", renalThreshold: 60 }], { egfr: 35, allergies: [], diagnoses: [] });
+    expect(problems.map((problem) => problem.code)).toEqual(expect.arrayContaining(["INTERACTION", "DOSE", "MONITORING"]));
+  });
+
+  it("requires both a source and an evidence level", () => {
+    expect(evidenceGate("https://example.org/guideline", "Guideline")).toBe(true);
+    expect(evidenceGate(undefined, "Guideline")).toBe(false);
+  });
+
+  it("reduces dose for severe renal impairment", () => {
+    expect(renalDoseAdjustment(100, 25).doseMg).toBe(50);
+  });
+
+  it("generates a traceable SOAP note and handles absent evidence", () => {
+    expect(buildSoapNote({ subjective: "No dyspnea", objective: "SCr 1.2", assessment: "Stable", plan: "Monitor" })).toContain("Insufficient evidence");
+  });
+
+  it("separates continued, omitted, and new medication therapy", () => {
+    const result = reconcileMedications([{ name: "metformin", doseMg: 500, frequency: "bid" }, { name: "lisinopril", doseMg: 10, frequency: "daily" }], [{ name: "lisinopril", doseMg: 10, frequency: "daily" }, { name: "atorvastatin", doseMg: 20, frequency: "nightly" }]);
+    expect(result.continued).toHaveLength(1);
+    expect(result.omitted).toHaveLength(1);
+    expect(result.newTherapy).toHaveLength(1);
+  });
+});
