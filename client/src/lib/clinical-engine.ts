@@ -34,7 +34,11 @@ export function hepaticDoseAdjustment(doseMg: number, childPugh: "A" | "B" | "C"
 }
 
 export function evidenceGate(sourceUrl: string | undefined, evidenceLevel: string | undefined) {
-  return Boolean(sourceUrl?.trim() && evidenceLevel?.trim());
+  const source = sourceUrl?.trim() ?? "";
+  const level = evidenceLevel?.trim() ?? "";
+  if (!source || !level) return false;
+  if (/example\.org|example\.com|localhost/i.test(source)) return false;
+  return /^https?:\/\/|^doi:/i.test(source);
 }
 
 export function buildSoapNote(input: { subjective: string; objective: string; assessment: string; plan: string; source?: string }) {

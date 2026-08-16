@@ -186,3 +186,20 @@
 - [x] Document release signing, APK installation, and device test evidence requirements.
 - [x] Document deferred Supabase activation prerequisites and live E2E validation steps.
 - [x] Run type checks and Vitest after the Android branding/signing changes.
+
+## Upgrade audit and Clinical Pharmacist Intelligence Platform specification
+
+- [x] Audit the existing source, screens, navigation, components, database, Supabase, authentication, API, AI, clinical modules, patient workflows, drug information, logbook, training, calculations, synchronization, offline behavior, environment, and dependencies.
+- [x] Produce an internal inventory of existing, partial, missing, broken, and duplicated functionality without replacing working features.
+- [x] Map existing data structures to the requested clinical domains and identify only safe additive migrations.
+- [x] Audit existing AI provider, prompts, context, citations, clinical safety, privacy, and hallucination controls before extending Copilot behavior.
+- [x] Audit RTL, accessibility, mobile usability, loading/error/empty states, and Android wrapper compatibility.
+- [x] Implement the next highest-priority gaps without creating duplicate workflows or tables.
+- [x] Add regression tests and verify navigation, authentication, forms, database operations, offline behavior, RTL, web preview, and Android build after each major change.
+- [x] Deliver a durable audit and upgrade report with recommended development order and remaining blockers.
+
+## Audit follow-up hardening
+
+- [x] Add a targeted regression test for the upgraded SOAP/intervention evidence gate and ensure no placeholder source can be saved.
+- [x] Remove patient_id null defaults from medication review/intervention/case save paths by requiring or explicitly selecting a patient context.
+- [ ] Complete a focused post-change verification pass for navigation, authentication, forms, offline behavior, RTL, and cloud/local data operations.

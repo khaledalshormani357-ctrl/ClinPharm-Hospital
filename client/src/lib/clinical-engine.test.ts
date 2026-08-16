@@ -19,8 +19,10 @@ describe("clinical engine", () => {
     expect(problems.some((problem) => problem.code === "DOSE")).toBe(true);
   });
 
-  it("requires both a source and an evidence level", () => {
-    expect(evidenceGate("https://example.org/guideline", "Guideline")).toBe(true);
+  it("requires a real source and an evidence level", () => {
+    expect(evidenceGate("https://www.fda.gov/drugs", "Regulatory source")).toBe(true);
+    expect(evidenceGate("https://example.org/guideline", "Guideline")).toBe(false);
+    expect(evidenceGate("https://www.fda.gov/drugs", undefined)).toBe(false);
     expect(evidenceGate(undefined, "Guideline")).toBe(false);
   });
 
