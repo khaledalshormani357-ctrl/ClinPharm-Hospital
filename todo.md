@@ -111,3 +111,8 @@
 
 - [x] Restore the existing Capacitor Android wrapper in the current project tree before pushing the repository update; do not create a new app or replace the React app.
 - [ ] Re-run the Android debug build and verify the regenerated wrapper is represented in the private GitHub tree while excluding local.properties and build outputs.
+
+## Optional GitHub verification workflow
+
+- [ ] Add a manually triggered GitHub Actions workflow that runs project checks and read-only Supabase verification using protected GitHub Secrets only.
+- [ ] Document that the workflow must not auto-apply migrations or print database URLs, passwords, publishable keys, or service-role keys.

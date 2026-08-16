@@ -1,0 +1,50 @@
+name: ClinPharm verification
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: TypeScript checks
+        run: pnpm check
+
+      - name: Unit tests
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+        run: pnpm test
+
+      - name: Read-only Supabase verification
+        if: ${{ secrets.SUPABASE_DB_URL != '' }}
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -eu
+          psql "$SUPABASE_DB_URL" --set=ON_ERROR_STOP=1 --file=supabase/verify.sql --output=supabase-verification.txt
+          cat supabase-verification.txt
+
+      - name: Explain skipped database verification
+        if: ${{ secrets.SUPABASE_DB_URL == '' }}
+        run: echo "SUPABASE_DB_URL is not configured; no live database query was attempted."
