@@ -153,6 +153,7 @@ function vitePluginManusDebugCollector(): Plugin {
 const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector()];
 
 export default defineConfig({
+  envPrefix: ["VITE_", "EXPO_PUBLIC_"],
   plugins,
   resolve: {
     alias: {

@@ -5,8 +5,12 @@ const config: CapacitorConfig = {
   appName: "ClinPharm Hospital",
   webDir: "dist/public",
   bundledWebRuntime: false,
-  server: {
-    androidScheme: "https",
+  plugins: {
+    SplashScreen: {
+      launchAutoHide: true,
+      backgroundColor: "#0b3433",
+      showSpinner: false,
+    },
   },
 };
 

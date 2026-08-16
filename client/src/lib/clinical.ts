@@ -12,25 +12,3 @@ export function copilotProgress(completedStep: number, totalSteps: number) {
 export function canFinalizeRecommendation(hasVerifiedSource: boolean, isHighRisk: boolean) {
   return hasVerifiedSource && (!isHighRisk || hasVerifiedSource);
 }
-
-export type PatientAssessmentDraft = {
-  id: string;
-  initials: string;
-  age: string;
-  ward: string;
-  complaint: string;
-  allergies: string;
-  therapy: string;
-};
-
-export function serializePatientAssessmentDraft(draft: PatientAssessmentDraft) {
-  return {
-    id: draft.id.trim(),
-    initials: draft.initials.trim().toUpperCase(),
-    age: draft.age.trim() ? Number(draft.age) : null,
-    ward: draft.ward.trim() || "Unassigned",
-    complaint: draft.complaint.trim(),
-    allergies: draft.allergies.trim() || "NKDA",
-    therapy: draft.therapy.trim(),
-  };
-}

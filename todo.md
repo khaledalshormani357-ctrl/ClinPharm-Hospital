@@ -72,165 +72,42 @@
 
 ## Supabase production verification request
 
-- [x] Deferred by user: verify Supabase project connection, configuration, and safe execution prerequisites.
-- [x] Deferred by user: apply supabase/schema.sql and verify tables, indexes, and RLS policies in the real Supabase project.
-- [x] Deferred by user: create or use a user-provided disposable Supabase test account without storing credentials in code or logs.
-- [x] Deferred by user: verify sign-in, session restoration, password-reset request, patient sync, medication-review CRUD, and conflict recovery against real Supabase.
-- [x] Deferred by user: add and run E2E tests for patient creation, medication review, and conflict upload/recovery.
+- [ ] Verify Supabase project connection, configuration, and safe execution prerequisites.
+- [ ] Apply supabase/schema.sql and verify tables, indexes, and RLS policies in the real Supabase project.
+- [ ] Create or use a user-provided disposable Supabase test account without storing credentials in code or logs.
+- [ ] Verify sign-in, session restoration, password-reset request, patient sync, medication-review CRUD, and conflict recovery against real Supabase.
+- [ ] Add and run E2E tests for patient creation, medication review, and conflict upload/recovery.
 
-## Deferred Supabase work
+## Existing Supabase project integration
 
-- [x] Deferred by user: execute supabase/schema.sql and verify the real Supabase project when access is available.
-- [x] Deferred by user: create/use a disposable Supabase test account and run live auth/sync validation.
-- [x] Deferred by user: add and run live Supabase E2E tests after database activation.
+- [x] Use the existing Supabase project URL `https://iwtyddokiwcqwnmmlwlt.supabase.co` without creating a new Vite or mobile project.
+- [x] Verify the current React/Capacitor app structure and identify the existing Supabase client, config, schema, Auth, RLS, and sync data paths.
+- [x] Configure only `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for mobile-safe public access; never place service_role or secret keys in client code.
+- [x] Run or safely prepare the existing database schema SQL, then verify database schema and RLS policy definitions using administrative SQL access without exposing secrets.
+- [ ] Connect the existing data layer to the selected Supabase project and test patient-linked CRUD, Auth/session restoration, queue flush, and conflict handling.
+- [ ] Preserve all existing screens, web preview, Android wrapper, local cache, offline behavior, and clinical safety gates.
+- [ ] Run TypeScript, Vitest, web build, Android build, and Supabase integration checks before the next checkpoint.
 
-## Non-Supabase continuation
+## Post-migration Supabase verification
 
-- [x] Improve the remaining clinical and educational workflows without depending on live Supabase access.
-- [x] Add additional automated tests and visual verification for the continued workflows.
+- [ ] Run real-project SQL verification queries for ClinPharm tables, indexes, trigger, and `pg_policies` RLS entries, then record the returned results.
+- [ ] Verify Auth user creation/session restoration and patient-linked CRUD using a disposable test account, with cleanup documented.
 
-## Prioritized non-Supabase improvements
+## Private GitHub repository setup
 
-- [x] Persist chief complaint, allergies, and current therapy in the patient assessment draft and expose them to the review step.
-- [x] Add a visible evidence/source validation state to the recommendation step, including an explicit insufficient-evidence path.
-- [x] Add additional unit tests for high-risk Copilot gating, drug-related problem detection, and patient draft serialization.
-- [x] Perform desktop and mobile visual verification after these improvements.
+- [x] Audit the current Git state, ignored files, environment files, keystores, release kits, and generated artifacts before publishing.
+- [x] Strengthen ignore rules so Supabase secrets, `.env` files, keystores, passwords, release kits, and local build outputs cannot be committed.
+- [x] Create a new private GitHub repository for the existing ClinPharm project without creating or replacing the app.
+- [x] Commit and push the current source, Android wrapper, Supabase schema/docs, tests, and project documentation to the private repository.
+- [x] Verify the remote, default branch, repository visibility, and absence of secret-like files in the pushed tree.
+- [x] Document the repository URL and safe GitHub Secrets required for any future Supabase workflow.
 
-## Continued workflow verification gaps
+## GitHub repository verification follow-up
 
-- [x] Expose complaint, allergies, and current therapy in a later Copilot review/summary step before completion.
-- [x] Add dedicated DRP-detection tests for interaction, high-alert, renal-dose, and omission scenarios.
-- [x] Add one concrete educational workflow improvement, such as a case progress action or question completion state, without requiring live Supabase.
-- [x] Re-run automated tests and desktop/mobile visual verification after these workflow changes.
+- [x] Verify and record that the private GitHub tree contains the Android wrapper, Capacitor config, tests, Supabase schema/docs, and project documentation.
+- [x] Add a permanent repository document with the private GitHub URL and names/purposes of safe GitHub Secrets for future Supabase workflows, without secret values.
 
-## Next phase: audit and training improvements
+## Android wrapper repository gap
 
-- [x] Add a local audit log model and persistence for patient drafts, medication reviews, SOAP/intervention actions, and Copilot evidence confirmations.
-- [x] Add an accessible Clinical logbook view that lists audit events with timestamps, actor, action, and source/evidence context.
-- [x] Add interactive training question state with answer selection, immediate rationale feedback, and completion tracking.
-- [x] Add unit tests for audit event serialization and training answer evaluation.
-- [x] Run type checks, tests, and desktop/mobile visual verification for this phase.
-
-## Training question completion hardening
-
-- [x] Add explicit question completion tracking with completed question IDs, correctness count, progress indicator, and local persistence.
-- [x] Add tests for question completion state and persisted training progress.
-- [x] Re-run type checks, tests, and desktop/mobile visual verification after question completion tracking.
-
-## Question progress test gap
-
-- [x] Extract question-progress serialization/update logic into pure functions and add Vitest coverage for completion IDs, correctness counting, and local persistence restoration.
-- [x] Re-run type checks, tests, and visual verification after the question-progress test fix.
-
-## New phase: audit export and timed training
-
-- [x] Add a safe local CSV export for the clinical audit log with clear columns and escaping.
-- [x] Add a timed training session mode with start, pause/reset, remaining time, and completion state.
-- [x] Add a local performance summary for training accuracy, completed questions, and session duration.
-- [x] Add unit tests for CSV escaping/export transformation and timed-session state transitions.
-- [x] Run type checks, tests, and desktop/mobile visual verification for the new phase.
-
-## Training performance summary hardening
-
-- [x] Add a dedicated local training performance summary showing completed questions, accuracy, correct count, and session duration/elapsed time.
-- [x] Persist the training performance summary locally and add Vitest coverage for summary calculation and serialization.
-- [x] Re-run type checks, tests, and desktop/mobile visual verification after the summary fix.
-
-## Supabase connection re-enabled
-
-- [x] Deferred by user: verify the newly connected Supabase URL, anon configuration, and safe environment setup without exposing secrets.
-- [x] Deferred by user: verify that the ClinPharm schema tables, indexes, and RLS policies exist in the connected project.
-- [x] Deferred by user: verify Supabase Auth session restoration, sign-in/reset-password request behavior, and user isolation.
-- [x] Deferred by user: run live-safe patient, medication-review, and conflict-sync checks using a disposable authenticated test session.
-- [x] Deferred by user: run the project test suite and final desktop/mobile visual verification after the Supabase connection is confirmed.
-
-## Supabase deferred again
-
-- [x] Deferred by user: keep live Supabase schema execution, live Auth validation, and live E2E checks deferred until the user has suitable computer access.
-- [x] Continue only with local-cache clinical and educational improvements that do not require live Supabase.
-
-## Local clinical timeline and documentation phase
-
-- [x] Add a local patient timeline model with timestamped assessment, medication review, intervention, SOAP, and alert events.
-- [x] Add a local timeline view with filtering by event type and patient identifier.
-- [x] Add quick documentation templates for SOAP, medication review, and intervention notes with local save.
-- [x] Add unit tests for timeline ordering/filtering and template serialization.
-- [x] Run type checks, tests, and desktop/mobile visual verification for this local phase.
-
-## Structured documentation template hardening
-
-- [x] Render template-specific fields for SOAP, medication review, and intervention documentation.
-- [x] Add pure serialization and parsing functions for structured template entries and save them in the local timeline.
-- [x] Add Vitest coverage for template field mapping, serialization, and parsing.
-- [x] Re-run type checks, tests, and desktop/mobile visual verification after the structured template fix.
-
-## Documentation template mapping test hardening
-
-- [x] Add explicit Vitest assertions for each documentation template's expected field labels and placeholders.
-- [x] Re-run type checks, tests, and desktop/mobile visual verification after strengthening template mapping tests.
-
-## Android APK conversion
-
-- [x] Evaluate whether the current environment can build a signed or debug APK locally and choose Capacitor/Expo packaging accordingly.
-- [x] Add Android app metadata, package identifier, package name, and offline-safe web/app shell behavior.
-- [x] Build a debug APK artifact and add a reproducible Capacitor/Gradle build path.
-- [x] Verify the Android wrapper build inputs and preserve the web preview.
-- [x] Document APK installation and signing limitations clearly without exposing secrets.
-
-## Next phase: Android device validation, branding, release signing, and Supabase readiness
-
-- [x] Prepare a real-device APK validation checklist for patient flows, Copilot gating, training, and offline persistence.
-- [x] Add branded Android launcher icon and splash-screen assets/configuration without storing secrets.
-- [x] Verify the branded debug APK after Capacitor sync and Gradle build.
-- [x] Add a secure release-signing configuration template that reads keystore values from environment variables and keeps keystore files out of Git.
-- [x] Document release signing, APK installation, and device test evidence requirements.
-- [x] Document deferred Supabase activation prerequisites and live E2E validation steps.
-- [x] Run type checks and Vitest after the Android branding/signing changes.
-
-## Upgrade audit and Clinical Pharmacist Intelligence Platform specification
-
-- [x] Audit the existing source, screens, navigation, components, database, Supabase, authentication, API, AI, clinical modules, patient workflows, drug information, logbook, training, calculations, synchronization, offline behavior, environment, and dependencies.
-- [x] Produce an internal inventory of existing, partial, missing, broken, and duplicated functionality without replacing working features.
-- [x] Map existing data structures to the requested clinical domains and identify only safe additive migrations.
-- [x] Audit existing AI provider, prompts, context, citations, clinical safety, privacy, and hallucination controls before extending Copilot behavior.
-- [x] Audit RTL, accessibility, mobile usability, loading/error/empty states, and Android wrapper compatibility.
-- [x] Implement the next highest-priority gaps without creating duplicate workflows or tables.
-- [x] Add regression tests and verify navigation, authentication, forms, database operations, offline behavior, RTL, web preview, and Android build after each major change.
-- [x] Deliver a durable audit and upgrade report with recommended development order and remaining blockers.
-
-## Audit follow-up hardening
-
-- [x] Add a targeted regression test for the upgraded SOAP/intervention evidence gate and ensure no placeholder source can be saved.
-- [x] Remove patient_id null defaults from medication review/intervention/case save paths by requiring or explicitly selecting a patient context.
-- [x] Complete a focused post-change verification pass for navigation, authentication, forms, offline behavior, RTL, and cloud/local data operations.
-
-## Runtime verification hardening
-
-- [x] Add regression coverage for patient-context-required save gating in Medication review, Interventions, and Cases.
-- [x] Perform and record an RTL-specific visual verification pass with Arabic direction enabled.
-- [x] Exercise and document local/cloud clinical-record save/update queue behavior after the evidence and patient-context hardening.
-
-## Verification correction follow-up
-
-- [x] Require patient context as well as evidence for the Interventions/SOAP save action and test the combined gate.
-- [x] Extend queue regression coverage to include a patient-linked update operation in addition to create.
-- [x] Record hook-level/local queue verification limitations explicitly without claiming live Supabase CRUD.
-
-## Follow-up: device validation, live Supabase, Arabic UI, and release signing
-
-- [x] Prepare the latest debug APK and a user-facing real-device offline test checklist for Patient intake, Copilot, training, local persistence, and queue recovery.
-- [x] Prepare safe Supabase activation instructions for running schema.sql, using a disposable test account, and validating Auth, session restoration, CRUD, and sync conflicts without exposing secrets.
-- [x] Translate the primary dashboard, authentication panel, Copilot, patient intake, clinical documentation, training, and safety labels to Arabic while preserving the existing English fallback and RTL direction support.
-- [x] Add release signing readiness checks and document the user-owned keystore requirements without generating or storing private signing secrets.
-- [x] Run final TypeScript, Vitest, web build, Android debug build, and visual verification after the follow-up changes.
-
-## Device flight-mode, live Supabase test, and signed release follow-up
-
-- [x] Prepare the latest APK and document a real-device airplane-mode test for Patient intake, Copilot evidence gates, training progress, local persistence, and queue recovery.
-- [ ] Confirm the available Supabase access path and execute schema/Auth/CRUD/sync tests only with a disposable test account and explicit cleanup.
-- [x] Keep Supabase credentials and test-account secrets out of source control and logs.
-- [x] Create or receive a user-owned release keystore outside Git and verify its alias/password inputs without storing them in the repository.
-- [x] Build and verify a signed release APK, then run final TypeScript, Vitest, web, and Android checks.
-- [x] Document which checks require the user’s physical phone, Supabase SQL access, or keystore values.
-
-- [ ] Obtain a valid Supabase project URL and SQL-capable access path before running live schema/Auth/CRUD/sync operations; do not treat the current non-URL environment values as usable credentials.
+- [x] Restore the existing Capacitor Android wrapper in the current project tree before pushing the repository update; do not create a new app or replace the React app.
+- [ ] Re-run the Android debug build and verify the regenerated wrapper is represented in the private GitHub tree while excluding local.properties and build outputs.

@@ -113,9 +113,23 @@ temp/
 client/public/__manus__/version.json
 .project-config.json
 
-# Android signing secrets and local SDK configuration
-android/local.properties
-android/*.keystore
-android/*.jks
+# Secrets and local environment
+.env.*
+!.env.example
+*.keystore
+*.jks
+*.p12
+*.pass
+keystore.properties
 android/keystore.properties
-android/app/build/outputs/
+
+# Release artifacts and private signing kits
+*-release-kit.zip
+clinpharm-release/
+app-release.apk
+android/app/build/
+android/.gradle/
+android/local.properties
+
+# Local Supabase state
+.supabase/
