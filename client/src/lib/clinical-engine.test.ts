@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSoapNote, detectDrugRelatedProblems, evaluateTrainingAnswer, evidenceGate, parseTrainingProgress, reconcileMedications, serializeTrainingProgress, updateTrainingProgress, renalDoseAdjustment, trainingQuestions } from "./clinical-engine";
+import { buildSoapNote, detectDrugRelatedProblems, evaluateTrainingAnswer, evidenceGate, advanceTrainingSession, calculateTrainingSummary, parseTrainingProgress, parseTrainingSummary, reconcileMedications, resetTrainingSession, serializeTrainingProgress, serializeTrainingSummary, updateTrainingProgress, renalDoseAdjustment, trainingQuestions } from "./clinical-engine";
 
 describe("clinical engine", () => {
   it("detects interaction, renal risk, and high-alert monitoring", () => {
@@ -44,6 +44,20 @@ describe("clinical engine", () => {
     expect(duplicate).toEqual(first);
     expect(parseTrainingProgress(serializeTrainingProgress(first))).toEqual(first);
     expect(parseTrainingProgress("invalid-json")).toEqual({ completed: [], correct: 0 });
+  });
+
+  it("advances, completes, and resets a timed training session", () => {
+    const started = { remainingSeconds: 2, running: true, completed: false };
+    expect(advanceTrainingSession(started, 1)).toEqual({ remainingSeconds: 1, running: true, completed: false });
+    expect(advanceTrainingSession(started, 2)).toEqual({ remainingSeconds: 0, running: false, completed: true });
+    expect(resetTrainingSession(90)).toEqual({ remainingSeconds: 90, running: false, completed: false });
+  });
+
+  it("calculates and persists a training performance summary", () => {
+    const summary = calculateTrainingSummary({ completed: [0, 1], correct: 1 }, 42, 4);
+    expect(summary).toEqual({ completedQuestions: 2, correctAnswers: 1, accuracyPercent: 50, durationSeconds: 42, totalQuestions: 4 });
+    expect(parseTrainingSummary(serializeTrainingSummary(summary))).toEqual(summary);
+    expect(parseTrainingSummary("bad-summary")).toBeNull();
   });
 
   it("separates continued, omitted, and new medication therapy", () => {

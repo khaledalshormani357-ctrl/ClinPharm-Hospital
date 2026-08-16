@@ -33,6 +33,17 @@ export function writeAuditEvents(events: AuditEvent[], storage: Storage | undefi
   storage?.setItem(AUDIT_KEY, JSON.stringify(events.slice(0, 100)));
 }
 
+export function escapeCsvCell(value: string | number | undefined) {
+  const text = String(value ?? "");
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+export function auditEventsToCsv(events: AuditEvent[]) {
+  const header = ["timestamp", "actor", "action", "entity", "entityId", "detail", "evidence"];
+  const rows = events.map((event) => [event.timestamp, event.actor, event.action, event.entity, event.entityId, event.detail, event.evidence].map(escapeCsvCell).join(","));
+  return [header.join(","), ...rows].join("\n");
+}
+
 export function formatAuditTimestamp(timestamp: number) {
   return new Date(timestamp).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
 }

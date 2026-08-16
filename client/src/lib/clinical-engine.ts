@@ -74,6 +74,40 @@ export function parseTrainingProgress(raw: string | null): TrainingProgress {
   }
 }
 
+export type TrainingSession = { remainingSeconds: number; running: boolean; completed: boolean };
+
+export function advanceTrainingSession(session: TrainingSession, seconds = 1): TrainingSession {
+  if (!session.running || session.completed) return session;
+  const remainingSeconds = Math.max(0, session.remainingSeconds - seconds);
+  return { remainingSeconds, running: remainingSeconds > 0, completed: remainingSeconds === 0 };
+}
+
+export type TrainingPerformanceSummary = { completedQuestions: number; correctAnswers: number; accuracyPercent: number; durationSeconds: number; totalQuestions: number };
+
+export function calculateTrainingSummary(progress: TrainingProgress, durationSeconds: number, totalQuestions: number): TrainingPerformanceSummary {
+  const completedQuestions = Math.min(totalQuestions, progress.completed.length);
+  return { completedQuestions, correctAnswers: Math.min(completedQuestions, progress.correct), accuracyPercent: completedQuestions ? Math.round((progress.correct / completedQuestions) * 100) : 0, durationSeconds: Math.max(0, durationSeconds), totalQuestions };
+}
+
+export function serializeTrainingSummary(summary: TrainingPerformanceSummary) {
+  return JSON.stringify(summary);
+}
+
+export function parseTrainingSummary(raw: string | null): TrainingPerformanceSummary | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as TrainingPerformanceSummary;
+    if (typeof parsed.completedQuestions !== "number" || typeof parsed.correctAnswers !== "number" || typeof parsed.accuracyPercent !== "number" || typeof parsed.durationSeconds !== "number" || typeof parsed.totalQuestions !== "number") return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function resetTrainingSession(durationSeconds = 300): TrainingSession {
+  return { remainingSeconds: durationSeconds, running: false, completed: false };
+}
+
 export function evaluateTrainingAnswer(question: TrainingQuestion, selectedIndex: number) {
   const correct = selectedIndex === question.correctIndex;
   return { correct, rationale: correct ? `Correct. ${question.rationale}` : `Review needed. ${question.rationale}` };

@@ -121,3 +121,17 @@
 
 - [x] Extract question-progress serialization/update logic into pure functions and add Vitest coverage for completion IDs, correctness counting, and local persistence restoration.
 - [x] Re-run type checks, tests, and visual verification after the question-progress test fix.
+
+## New phase: audit export and timed training
+
+- [x] Add a safe local CSV export for the clinical audit log with clear columns and escaping.
+- [x] Add a timed training session mode with start, pause/reset, remaining time, and completion state.
+- [x] Add a local performance summary for training accuracy, completed questions, and session duration.
+- [x] Add unit tests for CSV escaping/export transformation and timed-session state transitions.
+- [x] Run type checks, tests, and desktop/mobile visual verification for the new phase.
+
+## Training performance summary hardening
+
+- [x] Add a dedicated local training performance summary showing completed questions, accuracy, correct count, and session duration/elapsed time.
+- [x] Persist the training performance summary locally and add Vitest coverage for summary calculation and serialization.
+- [x] Re-run type checks, tests, and desktop/mobile visual verification after the summary fix.
