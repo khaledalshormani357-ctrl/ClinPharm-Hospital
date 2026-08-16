@@ -10,7 +10,9 @@
     "check": "tsc --noEmit",
     "format": "prettier --write .",
     "test": "vitest run",
-    "db:push": "drizzle-kit generate && drizzle-kit migrate"
+    "db:push": "drizzle-kit generate && drizzle-kit migrate",
+    "android:sync": "pnpm build && cap sync android",
+    "android:debug": "pnpm run android:sync && cd android && ./gradlew assembleDebug --no-daemon --max-workers=1"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.693.0",

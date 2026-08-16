@@ -104,10 +104,10 @@
 
 ## GitHub repository verification follow-up
 
-- [ ] Verify and record that the private GitHub tree contains the Android wrapper, Capacitor config, tests, Supabase schema/docs, and project documentation.
-- [ ] Add a permanent repository document with the private GitHub URL and names/purposes of safe GitHub Secrets for future Supabase workflows, without secret values.
+- [x] Verify and record that the private GitHub tree contains the Android wrapper, Capacitor config, tests, Supabase schema/docs, and project documentation.
+- [x] Add a permanent repository document with the private GitHub URL and names/purposes of safe GitHub Secrets for future Supabase workflows, without secret values.
 
 ## Android wrapper repository gap
 
-- [ ] Restore the existing Capacitor Android wrapper in the current project tree before pushing the repository update; do not create a new app or replace the React app.
+- [x] Restore the existing Capacitor Android wrapper in the current project tree before pushing the repository update; do not create a new app or replace the React app.
 - [ ] Re-run the Android debug build and verify the regenerated wrapper is represented in the private GitHub tree while excluding local.properties and build outputs.
