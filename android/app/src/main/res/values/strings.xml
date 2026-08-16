@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ClinPharm Hospital</string>
+    <string name="title_activity_main">ClinPharm Hospital</string>
+    <string name="package_name">com.clinpharm.hospital</string>
+    <string name="custom_url_scheme">com.clinpharm.hospital</string>
+</resources>

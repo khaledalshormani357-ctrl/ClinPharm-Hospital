@@ -168,3 +168,11 @@
 
 - [x] Add explicit Vitest assertions for each documentation template's expected field labels and placeholders.
 - [x] Re-run type checks, tests, and desktop/mobile visual verification after strengthening template mapping tests.
+
+## Android APK conversion
+
+- [x] Evaluate whether the current environment can build a signed or debug APK locally and choose Capacitor/Expo packaging accordingly.
+- [x] Add Android app metadata, package identifier, package name, and offline-safe web/app shell behavior.
+- [x] Build a debug APK artifact and add a reproducible Capacitor/Gradle build path.
+- [x] Verify the Android wrapper build inputs and preserve the web preview.
+- [x] Document APK installation and signing limitations clearly without exposing secrets.
