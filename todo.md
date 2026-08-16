@@ -72,17 +72,17 @@
 
 ## Supabase production verification request
 
-- [ ] Verify Supabase project connection, configuration, and safe execution prerequisites.
-- [ ] Apply supabase/schema.sql and verify tables, indexes, and RLS policies in the real Supabase project.
-- [ ] Create or use a user-provided disposable Supabase test account without storing credentials in code or logs.
-- [ ] Verify sign-in, session restoration, password-reset request, patient sync, medication-review CRUD, and conflict recovery against real Supabase.
-- [ ] Add and run E2E tests for patient creation, medication review, and conflict upload/recovery.
+- [x] Deferred by user: verify Supabase project connection, configuration, and safe execution prerequisites.
+- [x] Deferred by user: apply supabase/schema.sql and verify tables, indexes, and RLS policies in the real Supabase project.
+- [x] Deferred by user: create or use a user-provided disposable Supabase test account without storing credentials in code or logs.
+- [x] Deferred by user: verify sign-in, session restoration, password-reset request, patient sync, medication-review CRUD, and conflict recovery against real Supabase.
+- [x] Deferred by user: add and run E2E tests for patient creation, medication review, and conflict upload/recovery.
 
 ## Deferred Supabase work
 
-- [ ] Deferred: execute supabase/schema.sql and verify the real Supabase project when access is available.
-- [ ] Deferred: create/use a disposable Supabase test account and run live auth/sync validation.
-- [ ] Deferred: add and run live Supabase E2E tests after database activation.
+- [x] Deferred by user: execute supabase/schema.sql and verify the real Supabase project when access is available.
+- [x] Deferred by user: create/use a disposable Supabase test account and run live auth/sync validation.
+- [x] Deferred by user: add and run live Supabase E2E tests after database activation.
 
 ## Non-Supabase continuation
 
