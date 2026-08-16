@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSoapNote, detectDrugRelatedProblems, evidenceGate, reconcileMedications, renalDoseAdjustment } from "./clinical-engine";
+import { buildSoapNote, detectDrugRelatedProblems, evaluateTrainingAnswer, evidenceGate, parseTrainingProgress, reconcileMedications, serializeTrainingProgress, updateTrainingProgress, renalDoseAdjustment, trainingQuestions } from "./clinical-engine";
 
 describe("clinical engine", () => {
   it("detects interaction, renal risk, and high-alert monitoring", () => {
@@ -30,6 +30,20 @@ describe("clinical engine", () => {
 
   it("generates a traceable SOAP note and handles absent evidence", () => {
     expect(buildSoapNote({ subjective: "No dyspnea", objective: "SCr 1.2", assessment: "Stable", plan: "Monitor" })).toContain("Insufficient evidence");
+  });
+
+  it("evaluates training answers with immediate rationale", () => {
+    expect(evaluateTrainingAnswer(trainingQuestions[0], 1).correct).toBe(true);
+    expect(evaluateTrainingAnswer(trainingQuestions[0], 0).rationale).toContain("Review needed");
+  });
+
+  it("tracks and serializes training completion without duplicate scoring", () => {
+    const first = updateTrainingProgress({ completed: [], correct: 0 }, 0, true);
+    const duplicate = updateTrainingProgress(first, 0, false);
+    expect(first).toEqual({ completed: [0], correct: 1 });
+    expect(duplicate).toEqual(first);
+    expect(parseTrainingProgress(serializeTrainingProgress(first))).toEqual(first);
+    expect(parseTrainingProgress("invalid-json")).toEqual({ completed: [], correct: 0 });
   });
 
   it("separates continued, omitted, and new medication therapy", () => {

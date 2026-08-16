@@ -102,3 +102,22 @@
 - [x] Add dedicated DRP-detection tests for interaction, high-alert, renal-dose, and omission scenarios.
 - [x] Add one concrete educational workflow improvement, such as a case progress action or question completion state, without requiring live Supabase.
 - [x] Re-run automated tests and desktop/mobile visual verification after these workflow changes.
+
+## Next phase: audit and training improvements
+
+- [x] Add a local audit log model and persistence for patient drafts, medication reviews, SOAP/intervention actions, and Copilot evidence confirmations.
+- [x] Add an accessible Clinical logbook view that lists audit events with timestamps, actor, action, and source/evidence context.
+- [x] Add interactive training question state with answer selection, immediate rationale feedback, and completion tracking.
+- [x] Add unit tests for audit event serialization and training answer evaluation.
+- [x] Run type checks, tests, and desktop/mobile visual verification for this phase.
+
+## Training question completion hardening
+
+- [x] Add explicit question completion tracking with completed question IDs, correctness count, progress indicator, and local persistence.
+- [x] Add tests for question completion state and persisted training progress.
+- [x] Re-run type checks, tests, and desktop/mobile visual verification after question completion tracking.
+
+## Question progress test gap
+
+- [x] Extract question-progress serialization/update logic into pure functions and add Vitest coverage for completion IDs, correctness counting, and local persistence restoration.
+- [x] Re-run type checks, tests, and visual verification after the question-progress test fix.

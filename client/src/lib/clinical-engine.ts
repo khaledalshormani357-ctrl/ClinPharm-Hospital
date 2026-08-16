@@ -51,6 +51,39 @@ export function recordCalculation(history: Array<{ type: string; value: string; 
   return [{ type, value, timestamp: Date.now() }, ...history].slice(0, 20);
 }
 
+export type TrainingQuestion = { prompt: string; options: string[]; correctIndex: number; rationale: string };
+export type TrainingProgress = { completed: number[]; correct: number };
+
+export function updateTrainingProgress(progress: TrainingProgress, questionIndex: number, correct: boolean): TrainingProgress {
+  if (progress.completed.includes(questionIndex)) return progress;
+  return { completed: [...progress.completed, questionIndex], correct: progress.correct + (correct ? 1 : 0) };
+}
+
+export function serializeTrainingProgress(progress: TrainingProgress) {
+  return JSON.stringify(progress);
+}
+
+export function parseTrainingProgress(raw: string | null): TrainingProgress {
+  if (!raw) return { completed: [], correct: 0 };
+  try {
+    const parsed = JSON.parse(raw) as TrainingProgress;
+    if (!Array.isArray(parsed.completed) || typeof parsed.correct !== "number") return { completed: [], correct: 0 };
+    return { completed: parsed.completed.filter((value) => Number.isInteger(value)), correct: Math.max(0, parsed.correct) };
+  } catch {
+    return { completed: [], correct: 0 };
+  }
+}
+
+export function evaluateTrainingAnswer(question: TrainingQuestion, selectedIndex: number) {
+  const correct = selectedIndex === question.correctIndex;
+  return { correct, rationale: correct ? `Correct. ${question.rationale}` : `Review needed. ${question.rationale}` };
+}
+
+export const trainingQuestions: TrainingQuestion[] = [
+  { prompt: "Which action is required before finalizing a high-risk recommendation?", options: ["Skip source review", "Verify the original source", "Delete the case", "Ignore monitoring"], correctIndex: 1, rationale: "High-risk recommendations require explicit original-source verification and monitoring." },
+  { prompt: "What should be checked when eGFR is below a medication's renal threshold?", options: ["Dose or interval", "Patient initials only", "Training score", "Ward color"], correctIndex: 0, rationale: "Renal function may require dose or interval reassessment." },
+];
+
 export const trainingTracks = [
   { title: "Heart failure pharmacotherapy", progress: 76, cases: 8, questions: 24 },
   { title: "Antimicrobial stewardship", progress: 54, cases: 5, questions: 16 },
