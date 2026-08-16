@@ -223,3 +223,14 @@
 - [x] Translate the primary dashboard, authentication panel, Copilot, patient intake, clinical documentation, training, and safety labels to Arabic while preserving the existing English fallback and RTL direction support.
 - [x] Add release signing readiness checks and document the user-owned keystore requirements without generating or storing private signing secrets.
 - [x] Run final TypeScript, Vitest, web build, Android debug build, and visual verification after the follow-up changes.
+
+## Device flight-mode, live Supabase test, and signed release follow-up
+
+- [x] Prepare the latest APK and document a real-device airplane-mode test for Patient intake, Copilot evidence gates, training progress, local persistence, and queue recovery.
+- [ ] Confirm the available Supabase access path and execute schema/Auth/CRUD/sync tests only with a disposable test account and explicit cleanup.
+- [x] Keep Supabase credentials and test-account secrets out of source control and logs.
+- [x] Create or receive a user-owned release keystore outside Git and verify its alias/password inputs without storing them in the repository.
+- [x] Build and verify a signed release APK, then run final TypeScript, Vitest, web, and Android checks.
+- [x] Document which checks require the user’s physical phone, Supabase SQL access, or keystore values.
+
+- [ ] Obtain a valid Supabase project URL and SQL-capable access path before running live schema/Auth/CRUD/sync operations; do not treat the current non-URL environment values as usable credentials.
