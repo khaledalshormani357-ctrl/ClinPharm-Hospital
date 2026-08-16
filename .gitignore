@@ -112,3 +112,24 @@ temp/
 # Manus version file (auto-generated, not part of source)
 client/public/__manus__/version.json
 .project-config.json
+
+# Secrets and local environment
+.env.*
+!.env.example
+*.keystore
+*.jks
+*.p12
+*.pass
+keystore.properties
+android/keystore.properties
+
+# Release artifacts and private signing kits
+*-release-kit.zip
+clinpharm-release/
+app-release.apk
+android/app/build/
+android/.gradle/
+android/local.properties
+
+# Local Supabase state
+.supabase/

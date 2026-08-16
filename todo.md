@@ -69,3 +69,35 @@
 
 - [x] Render conflict status and recovery messaging explicitly for patient-conflict and other conflict queue entries.
 - [x] Re-run final visual verification after explicit conflict visibility is implemented.
+
+## Supabase production verification request
+
+- [ ] Verify Supabase project connection, configuration, and safe execution prerequisites.
+- [ ] Apply supabase/schema.sql and verify tables, indexes, and RLS policies in the real Supabase project.
+- [ ] Create or use a user-provided disposable Supabase test account without storing credentials in code or logs.
+- [ ] Verify sign-in, session restoration, password-reset request, patient sync, medication-review CRUD, and conflict recovery against real Supabase.
+- [ ] Add and run E2E tests for patient creation, medication review, and conflict upload/recovery.
+
+## Existing Supabase project integration
+
+- [x] Use the existing Supabase project URL `https://iwtyddokiwcqwnmmlwlt.supabase.co` without creating a new Vite or mobile project.
+- [x] Verify the current React/Capacitor app structure and identify the existing Supabase client, config, schema, Auth, RLS, and sync data paths.
+- [x] Configure only `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for mobile-safe public access; never place service_role or secret keys in client code.
+- [x] Run or safely prepare the existing database schema SQL, then verify database schema and RLS policy definitions using administrative SQL access without exposing secrets.
+- [ ] Connect the existing data layer to the selected Supabase project and test patient-linked CRUD, Auth/session restoration, queue flush, and conflict handling.
+- [ ] Preserve all existing screens, web preview, Android wrapper, local cache, offline behavior, and clinical safety gates.
+- [ ] Run TypeScript, Vitest, web build, Android build, and Supabase integration checks before the next checkpoint.
+
+## Post-migration Supabase verification
+
+- [ ] Run real-project SQL verification queries for ClinPharm tables, indexes, trigger, and `pg_policies` RLS entries, then record the returned results.
+- [ ] Verify Auth user creation/session restoration and patient-linked CRUD using a disposable test account, with cleanup documented.
+
+## Private GitHub repository setup
+
+- [ ] Audit the current Git state, ignored files, environment files, keystores, release kits, and generated artifacts before publishing.
+- [ ] Strengthen ignore rules so Supabase secrets, `.env` files, keystores, passwords, release kits, and local build outputs cannot be committed.
+- [ ] Create a new private GitHub repository for the existing ClinPharm project without creating or replacing the app.
+- [ ] Commit and push the current source, Android wrapper, Supabase schema/docs, tests, and project documentation to the private repository.
+- [ ] Verify the remote, default branch, repository visibility, and absence of secret-like files in the pushed tree.
+- [ ] Document the repository URL and safe GitHub Secrets required for any future Supabase workflow.

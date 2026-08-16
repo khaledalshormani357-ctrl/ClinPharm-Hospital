@@ -96,15 +96,24 @@ alter table public.medication_reviews enable row level security;
 alter table public.guidelines enable row level security;
 alter table public.sync_queue enable row level security;
 
+drop policy if exists "profiles are owner readable" on public.profiles;
 create policy "profiles are owner readable" on public.profiles for select using (auth.uid() = id);
+drop policy if exists "profiles are owner writable" on public.profiles;
 create policy "profiles are owner writable" on public.profiles for insert with check (auth.uid() = id);
+drop policy if exists "profiles are owner editable" on public.profiles;
 create policy "profiles are owner editable" on public.profiles for update using (auth.uid() = id) with check (auth.uid() = id);
 
+drop policy if exists "patients are owner isolated" on public.clinical_patients;
 create policy "patients are owner isolated" on public.clinical_patients for all using (auth.uid() = owner_id) with check (auth.uid() = owner_id);
+drop policy if exists "cases are owner isolated" on public.clinical_cases;
 create policy "cases are owner isolated" on public.clinical_cases for all using (auth.uid() = owner_id) with check (auth.uid() = owner_id);
+drop policy if exists "interventions are owner isolated" on public.clinical_interventions;
 create policy "interventions are owner isolated" on public.clinical_interventions for all using (auth.uid() = owner_id) with check (auth.uid() = owner_id);
+drop policy if exists "medication reviews are owner isolated" on public.medication_reviews;
 create policy "medication reviews are owner isolated" on public.medication_reviews for all using (auth.uid() = owner_id) with check (auth.uid() = owner_id);
+drop policy if exists "guidelines are shared readable" on public.guidelines;
 create policy "guidelines are shared readable" on public.guidelines for select using (true);
+drop policy if exists "sync queue is owner isolated" on public.sync_queue;
 create policy "sync queue is owner isolated" on public.sync_queue for all using (auth.uid() = owner_id) with check (auth.uid() = owner_id);
 
 create or replace function public.handle_new_user() returns trigger language plpgsql security definer set search_path = public as $$
