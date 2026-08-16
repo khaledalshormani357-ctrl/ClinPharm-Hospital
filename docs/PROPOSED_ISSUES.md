@@ -1,274 +1,381 @@
-# Proposed Issues — ClinPharm Hospital (Phase 0)
+# Proposed Issues — ClinPharm Hospital (Phase 0) — V2
 
-هذه قائمة Issues مقترحة (DOC-only) محفوظة على فرع feature/clinpharm-audit-report. لم تُنشأ أي Issues فعلية في GitHub — هذه مجرد مقترحات للمراجعة.
+هذه نسخة V2 لقائمة Issues المقترحة، محفوظة على فرع `feature/clinpharm-audit-report`. لا تُنشأ Issues فعلية ولا تُطبّق تغييرات إنتاجية — هذا الملف وثيقة تخطيطية فقط.
 
-تعليمات: كل Issue التالي يحتوي على: Title, Priority (P0–P3), Problem, Root cause, Evidence (من الشيفرة), Files affected, Risk, Proposed solution, Acceptance criteria, Migration required, Dependencies. كما تم تمييز ما تم التحقق منه من الكود، ما هو استنتاج/افتراض، وما يحتاج وصول Supabase/تشغيل لاختباره.
+إرشادات عامة:
+- هذه الوثيقة تُصنف المشكلات وتضع أولويات تنفيذ مقترحة (P0..P3) مع "Execution order" لتوضيح التبعيات التسلسلية.
+- لكل Issue أدرجنا ثلاثة حقول واضحة: "Verified from repository"، "Needs runtime verification"، و"Requires product/clinical decision".
+- لا تُنفَّذ أي migration أو تغييرات في Supabase أو RLS أو الإنتاج دون موافقتك الصريحة.
+
+Execution order (مقترح عام)
+P0-1 Identity/Auth architecture
+↓
+P1-1 Dev environment & runbook
+↓
+P1-2 RLS verification (staging)
+↓
+P1-3 Core clinical model (Patients, Encounters, Diagnoses, Allergies, Medications, Medication History, Medication Orders, Medication Reconciliation, Vitals, Labs)
+↓
+P1-4 Offline / sync verification
+↓
+P1-5 DRP foundation (بعد استقرار البيانات السريرية الأساسية)
+↓
+P2-1 Guidelines / Evidence ingestion & Search
+↓
+P2-2 Storage / Attachments (بناءً على احتياجات use-cases)
+↓
+P2-3 Education & Training domain (Questions, OSCE, Study Topics, Sessions, Learning Progress, Competencies, Reflections, Clinical Logbook)
+
+ملاحظة: الترتيب قابل للتعديل إذا أظهر الكود أو الاختبارات سببًا أفضل.
 
 ---
 
-1) Title: Identity duplication between Supabase and Drizzle/MySQL
+1) Title: Identity / Authentication architecture (P0)
+
 Priority: P0
-Problem: User identity data exists in two places: Supabase (auth.users + public.profiles) and local MySQL managed by Drizzle (users table). This can cause mismatched roles, inconsistent permissions, and authentication confusion.
-Root cause: Historical architecture used a local MySQL users table (drizzle) for session/user records; Supabase was later introduced for clinical data and auth, resulting in two identity stores without a canonical mapping.
-Evidence (code):
-- drizzle/schema.ts defines `users` table (openId, role, timestamps).
-- server/db.ts implements getDb(), upsertUser(), getUserByOpenId() using drizzle(process.env.DATABASE_URL).
-- server/_core/sdk.ts calls db.getUserByOpenId and db.upsertUser in authenticateRequest (lines: 288–316 and 294–303).
-- supabase/schema.sql defines public.profiles referencing auth.users(id).
-Files affected:
-- drizzle/schema.ts
-- server/db.ts
-- server/_core/sdk.ts
-- supabase/schema.sql
-Risk:
-- Critical: inconsistent access control where a user exists in one store but not the other; difficulty in enforcing RLS tied to auth.uid(); potential security gaps.
-Proposed solution:
-- Short term: Document exact flow and implement a read-only sync job to copy necessary fields from MySQL to Supabase profiles (non-destructive). Use this to validate mapping.
-- Long term: Migrate canonical identity to Supabase (auth.users + public.profiles) and update server SDK to read from Supabase instead of MySQL. Phase out Drizzle writes once parity is confirmed.
-Acceptance criteria:
-- Documented mapping between Drizzle.users.openId and Supabase.auth.users.id (or an explicit matching table).
-- Server code path for authenticateRequest updated in a feature branch to optionally read from Supabase without breaking existing flow (feature flagged).
-- Tests showing a user created via OAuth is visible in Supabase public.profiles and has correct role mapping.
-Migration required: Yes (data sync / potential schema add on public.profiles)
-Dependencies:
-- Access to Supabase staging or schema-only dump to validate profiles schema and auth.users mapping.
-What is verified from code: Drizzle usage in authentication path is confirmed.
-What is an assumption/needs verification: Existence of a stable mapping between openId and auth.users.id in Supabase — requires Supabase access.
-What requires running app/Supabase to confirm: That auth.uid() in Supabase corresponds to the same openId values used by Drizzle.
+Execution order: P0-1
+
+Problem:
+هناك مساران مستقلان للهوية في النظام حالياً:
+- Manus OAuth → openId → MySQL/Drizzle (local users)
+- Supabase Auth → auth.users → public.profiles → clinical tables
+
+لا يوجد mapping موثّق وموثوق بين openId و auth.users.id، مما يخلق ازدواجية في الهوية ومخاطر في فرض RLS والالتحاق ببيانات المرضى.
+
+Desired final state (هدف نهائي):
+Authentication → Supabase Auth → profiles → Clinical data
+
+Short-term constraints (قبل أي ترحيل):
+- لا نريد إنشاء أو تشغيل sync job بين MySQL وSupabase كحل قصير المدى دون دليل واضح ومبرر.
+- لا نُنشئ جداول mapping تنفيذية الآن إلا إذا أظهر التدقيق أن ذلك ضروري وبموافقتك.
+
+Proposed investigative actions (قبل أي تنفيذ):
+- تحديد جميع الأماكن التي تعتمد على `openId` في الكود (بحث كامل في repo: drizzle, server, SDK, auth flows, cookies, jwt handling).
+- تحديد جميع الأماكن التي تعتمد على `auth.uid()` أو تستخدم Supabase session (client hooks, server calls to Supabase).
+- تقييم إمكانية توجيه عملية المصادقة إلى Supabase Auth مباشرة (هل يمكن للـfrontend/backend استبدال Manus OAuth؟ ما تبعات ذلك على SSO/مستخدمين حالين).
+- وصف بدائل ربط الهوية (مثلاً: provisioning Supabase user عند أول login عبر Manus OAuth باستخدام server-side createUser، أو دعوة المستخدم إلى تسجيل دخول ثانوي في Supabase) مع تقييم المخاطر.
+- وضع خطة انتقال تدريجية ومحكمة بدون كسر المصادقة: خطوات تحقق، بيئة staging، خزنة نسخ احتياطية، feature flags، واختبارات قبول.
+
+Acceptance criteria (للتحقق قبل الانتقال):
+- قائمة كاملة بالمكانس البرمجية التي تستهلك `openId` و `auth.uid()`.
+- وثيقة تقييم لخيارات الربط/الترحيل مع مخاطر وفوائد لكل خيار.
+- خطة انتقال تدريجية مقترحة لا تنفذ أي عمليات كتابة مدمرة في الإنتاج دون موافقة صريحة.
+
+Verified from repository:
+- Drizzle `drizzle/schema.ts` و `server/db.ts` و `server/_core/sdk.ts` تُظهر اعتماد المسار MySQL للمستخدمين والمصادقة (upsertUser/getUserByOpenId).
+- `supabase/schema.sql` يُظهر public.profiles مرتبط بـ auth.users.
+
+Needs runtime verification:
+- التأكد أثناء تشغيل التطبيق/جلسات حقيقية بأن القيم المفتاحية (openId, auth.users.id) لا تُستخدم بشكل متضارب.
+- اختبار جلسات OAuth حقيقية ومعاينة auth.uid() في Supabase.
+
+Requires product/clinical decision:
+- قرار نهائي حول من يكون المصدر المرجعي للهوية (Supabase vs MySQL) وموعد التنفيذ.
+- قبول طريقة التسلسل (مثلاً: provisioning on-first-login vs user migration flow).
 
 ---
 
-2) Title: Missing clinical domain tables required by spec (Encounters, Diagnoses, Medications, etc.)
+2) Title: Dev environment & runbook (P1)
+
 Priority: P1
-Problem: The current Supabase schema includes core clinical tables (patients, cases, medication_reviews, interventions) but lacks many domain-specific tables specified for the full ClinPharm Hospital (Encounters, Diagnoses, Allergies, Medications, MedicationHistory, MedicationOrders, MedicationReconciliation, VitalSigns, LaboratoryResults, ClinicalProblems, DrugRelatedProblems, MonitoringPlans, EvidenceSources, etc.).
-Root cause: Initial app focused on patient-level notes and reviews; full EHR-style clinical domain modeling was not implemented yet.
-Evidence (code):
-- supabase/schema.sql lists clinical_patients, clinical_cases, medication_reviews, clinical_interventions, guidelines, sync_queue but no medications/encounters/diagnoses tables.
-Files affected:
-- supabase/schema.sql
-- client/src/pages (UI pages will require forms and screens to manage these entities)
-Risk:
-- Medium: Incomplete clinical model prevents building medication workflow, DRP engine, and accurate clinical decision support.
+Execution order: P1-1 (يجب تنفيذها بعد حل P0-1 أو بالتوازي مع التحقيقات)
+
+Problem:
+لا يوجد ملف .env.example واضح أو دليل تشغيل موحّد لتشغيل بيئة التطوير محلياً مع Supabase staging/بدائل.
+
 Proposed solution:
-- Create design documents and proposed schema migrations for each missing domain table.
-- Prioritize core tables for Phase 1 (Encounters, Medications, MedicationHistory, MedicationOrders, Allergies, Diagnoses) and implement them via non-destructive migrations in staging.
+- إنشاء docs/DEV_RUNBOOK.md و `.env.example` مع متغيرات placeholders: VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY (staging), DATABASE_URL (dev), OAUTH_SERVER_URL, FORGE_API_KEY_PLACEHOLDER، إلخ.
+- تعليمات لتعبئة مفاتيح dev مؤقتة، seed scripts للمستخدمين والبيانات الأساسية، وخطوات تشغيل للتطبيق (client/server) وCI smoke.
+
 Acceptance criteria:
-- Schema design doc approved.
-- Migrations created and tested on staging (no changes to production until approved).
-Migration required: Yes (when implementing the tables)
-Dependencies:
-- Product input on minimal required fields for each table.
-What is verified from code: Missing tables are absent from schema.sql.
-What is assumption/needs verification: The client UI's readiness to consume and create these models — needs running the app and mapping screens.
-What requires running app/Supabase to confirm: Real flows for creating encounters and linking medications to patients.
+- مطوّر جديد يستطيع إعداد وتشغيل التطبيق محلياً باتباع الدليل.
+
+Verified from repository:
+- لا يُوجد `.env.example` في الروت. package.json يحتوي على سكربتات dev/build.
+
+Needs runtime verification:
+- تشغيل الخطوات على جهاز dev واحد على الأقل والتأكد من أن build/boot ناجحة.
+
+Requires product/clinical decision:
+- تحديد ما إذا كان يتم توفير بيانات عيّنة سريرية أو بيانات مزيفة للـdev.
 
 ---
 
-3) Title: Local cache & sync flow needs verification (offline behavior and sync_queue)
+3) Title: RLS verification (staging) (P1)
+
 Priority: P1
-Problem: The repository documents a "Cloud First + Local Cache" flow and a sync_queue table, but the implementation and robustness of offline behavior, conflict resolution, migration of legacy cache, and retries is not verified.
-Root cause: Offline-first features are complex and often under-tested; code documents intent but functional tests are missing.
-Evidence (code):
-- supabase/README.md describes the cache and sync migration from clinpharm-patient-drafts.
-- supabase/schema.sql defines sync_queue table and RLS.
-Files affected:
-- supabase/README.md
-- supabase/schema.sql
-- client/src/hooks (likely cache/sync logic) — needs verification of which hook files implement syncing.
-Risk:
-- High: data loss or inconsistent state in offline→online transitions; failed syncs may leave records unsaved.
+Execution order: P1-2
+
+Problem:
+سياسات RLS موجودة في `supabase/schema.sql` لكنها لم تُفحص تشغيلياً في بيئة تطبيقية لضمان السلوك المرجو.
+
 Proposed solution:
-- Run end-to-end tests for offline->online sync, including conflict scenarios, retry attempts, and error logging.
-- Harden sync_queue processing with backoff and alerting on repeated failures.
+- إعداد Supabase staging طبقاً لـschema.sql، إنشاء حسابات اختبار متعددة بأدوار مختلفة، وكتابة matrix اختبارات لقراءة/كتابة/تحديث/حذف على كل جدول.
+
 Acceptance criteria:
-- Functional tests for offline creation/edit of patients pass and data is synced to Supabase in staging.
-- Sync_queue shows processed items with documented retries/explanations.
-Migration required: No (verification only)
-Dependencies:
-- Access to a Supabase staging project and ability to run the client in offline simulation mode.
-What is verified from code: sync_queue table exists and README mentions migration from local cache.
-What is assumption/needs verification: Implementation correctness and client hooks behavior; requires running the app.
-What requires running app/Supabase to confirm: Full offline->online sync and conflict resolution.
+- اختبار مصفوفة الأذونات يمرّ في staging لكل الجداول الحرجة.
+
+Verified from repository:
+- وجود سياسات RLS في `supabase/schema.sql` (profiles, clinical_patients, clinical_cases, medication_reviews, clinical_interventions, sync_queue, guidelines).
+
+Needs runtime verification:
+- تنفيذ matrix الاختبارات مع جلسات auth مختلفة في staging.
+
+Requires product/clinical decision:
+- تحديد الشروط الدقيقة لكل دور (role -> permissions matrix).
 
 ---
 
-4) Title: LLM/AI layer exists but lacks PHI/PII leakage protections
+4) Title: Core clinical model — phased (P1)
+
 Priority: P1
-Problem: There is an LLM invocation layer (server/_core/llm.ts) but no code-level safeguards preventing protected health information (PHI) or personally identifiable information (PII) from being sent to external LLM providers.
-Root cause: LLM layer was implemented as a generic client to the Manus Forge API but clinical safety filters and data minimization may not have been integrated yet.
-Evidence (code):
-- server/_core/llm.ts exists and invokes ENV.forgeApiKey bearer requests to the configured endpoint.
-- No additional filters or scrubbing functions present in llm.ts; no explicit clinical prompt templates were found in the repository.
-Files affected:
-- server/_core/llm.ts
-- potential caller locations in server/_core/* and server routers (no explicit clinical copilot integration found)
-Risk:
-- High: accidental leakage of PHI/PII to third-party LLM providers, regulatory exposure (HIPAA/GDPR) and clinical risk from hallucinations.
-Proposed solution:
-- Introduce a data-scrubbing layer that removes PHI/PII from prompts before dispatch, and add a strict allowlist for what patient data is forwarded.
-- Implement logging and audit trails for LLM requests and responses, and keep minimal clinical context (hashed IDs) where possible.
-- Add a review/approval gate before enabling LLM features in production.
+Execution order: P1-3
+
+Problem:
+لا نريد بناء EHR كامل دفعة واحدة. يجب تقسيم domain model إلى مراحل واضحة وترتيب حسب الأولوية لبناء سِير العمل الدوائي والسريري.
+
+Phase A — Core clinical (الأولوية العليا لبناء مسار المريض والأدوية):
+- Patients
+- Encounters
+- Diagnoses/Problems
+- Allergies
+- Medications
+- Medication History
+- Medication Orders
+- Medication Reconciliation
+- Vital Signs
+- Laboratory Results
+
+Phase B — Clinical intelligence (لاحقاً، اعتماداً على Phase A):
+- Drug Related Problems (DRPs)
+- Monitoring Plans
+- Evidence Sources
+
+Phase C — Education (أقل أولوية مبدئية)
+- Questions
+- OSCE Stations
+- Study Topics
+- Study Sessions
+- Learning Progress
+- Competencies
+- Reflections
+- Clinical Logbook
+
 Acceptance criteria:
-- A documented filter pipeline exists for LLM inputs that can be audited.
-- Requests to LLM in staging are logged with redaction applied and justification for context included.
-Migration required: No (architectural change + code additions)
-Dependencies:
-- Security review and product decision on allowed data to forward to LLM.
-What is verified from code: llm.ts exists and is used as an LLM client.
-What is assumption/needs verification: Actual callers passing patient data to llm.invoke — requires code search for callers and running app to confirm.
-What requires running app/Supabase to confirm: Real examples of LLM calls with clinical context.
+- تصميم مخططات بسيطة (ERD) لكل جدول أساسي في Phase A مع الحقول الدنيا المطلوبة.
+- migrations جاهزة للتشغيل في staging (non-destructive additions فقط).
+
+Verified from repository:
+- `supabase/schema.sql` يحتوي على `clinical_patients` و `clinical_cases` و `medication_reviews` و `clinical_interventions` فقط — لا توجد جداول مفصّلة للأدوية/encounters.
+
+Needs runtime verification:
+- اختبار UI flows التي تتطلب ربط encounter/medication مع patient.
+
+Requires product/clinical decision:
+- تحديد الحقول الدنيا المطلوبة لكل كيان (مثلاً: medication should include coding e.g., RxNorm/CVN).
 
 ---
 
-5) Title: RLS policies present but need functional verification in staging
+5) Title: Offline / Sync verification (P1)
+
 Priority: P1
-Problem: RLS policies are defined in supabase/schema.sql (profiles, clinical_patients, clinical_cases, interventions, medication_reviews, guidelines, sync_queue) but their runtime behavior hasn't been verified in a Supabase environment with sample data and sessions.
-Root cause: Policies declared in migration SQL but require testing with actual sessions (auth.uid()) to ensure they enforce intended access.
-Evidence (code):
-- supabase/schema.sql includes alter table ... enable row level security and create policy statements for each table.
-Files affected:
-- supabase/schema.sql
-Risk:
-- High: Incorrect RLS could allow data exposure between users or block legitimate access.
+Execution order: P1-4
+
+Problem:
+آلية الـLocal cache و sync_queue موثقة لكنها لم تُختبر وظيفياً (conflict resolution, retries, backoff, error handling).
+
 Proposed solution:
-- Create a staging Supabase with schema.sql applied, seed test users and data, and run integration tests verifying allowed and denied actions match policy intent.
+- إجراء اختبارات end-to-end لمحاكاة سيناريوهات offline → online، conflicts، وتكرار المحاولات.
+- تحسين logging في `sync_queue` لمعرفة الأسباب عند الفشل.
+
 Acceptance criteria:
-- Test matrix covering read/write/update/delete for each table per role passes in staging.
-Migration required: No (testing only; schema already present)
-Dependencies:
-- Access to Supabase staging and test accounts.
-What is verified from code: RLS statements exist in SQL.
-What is assumption/needs verification: Execution of these policies in a live Supabase instance.
-What requires running app/Supabase to confirm: Behavior of policies under different auth sessions.
+- سيناريوهات محاكاة تعمل في staging/locally مع توثيق لسلوك الـsync.
+
+Verified from repository:
+- وجود `sync_queue` في schema.sql وREADME يصف flow.
+
+Needs runtime verification:
+- تشغيل التطبيق في نمط offline وتحقق من معالجة `sync_queue`.
+
+Requires product/clinical decision:
+- سياسات حل التعارض: last-write-wins vs merge rules vs human review.
 
 ---
 
-6) Title: No Supabase Storage bucket configured for attachments (planned)
+6) Title: DRP foundation & dependencies (P1)
+
+Priority: P1
+Execution order: P1-5 (بعد Phase A core clinical)
+
+Problem:
+لا نبني محرك DRP قبل أن تتوفر الطبقات السريرية الأساسية. DRP يعتمد بشدة على توافر بيانات المريض، الأدوية، التشخيصات، والنتائج المخبرية.
+
+Proposed approach:
+- اعتمد الترتيب التالي: Patient → Medications → Diagnoses/Problems → Labs/Vitals → Medication Review → DRP detection → Recommendation → Monitoring.
+- صمم بنية DRP بحيث تعتمد على مراجع خارجية (codes, severity, rules repository) وتبقى قابلة للتوسيع (rule-engine أو pipeline إحصائي/ML لاحقاً).
+
+Acceptance criteria:
+- ERD يوضح الروابط اللازمة لتشغيل DRP عند توفر البيانات الأساسية.
+
+Verified from repository:
+- لا توجد جداول `drug_related_problems` أو محرّك قواعد حالياً.
+
+Needs runtime verification:
+- تحقق من ربط Medication History وMedication Orders مع patient records في staging بعد إضافة الجداول.
+
+Requires product/clinical decision:
+- تعريف أنواع DRP المقبولة ودرجة الخطورة وسياسات التصعيد.
+
+---
+
+7) Title: Clinical Safety Architecture for AI and Decision Support (P1)
+
+Priority: P1
+Execution order: P1-6 (توازي مع DRP foundation؛ يجب أن يكون متاحاً قبل تفعيل أي توصيات آلية)
+
+Problem:
+نحتاج بنية أمان سريرية واضحة لدمج AI/Decision Support ضمن سير العمل السريري دون السماح للـAI بتنفيذ إجراءات حرجة مباشرة.
+
+Requirements / Constraints:
+- AI ليس له صلاحية تنفيذ medication orders مباشرة.
+- AI لا يغيّر أو يحذف clinical data مباشرة — أي اقتراح يجب أن يكون اقتراحاً قابلاً للمراجعة.
+- كل recommendation يجب أن تُميّز صراحة بين محتوى مستند إلى guideline/إثبات ونتيجة AI.
+- إظهار evidence/source عندما يكون متاحاً.
+- تسجيل model/provider/version، وقت التوصية، والـinput context (مختصر/معرّف ملائم) في الـaudit log.
+- وجود human-in-the-loop قبل أي إجراء ذي مخاطرة عالية.
+- آلية للتعامل مع حالات عدم التأكد (uncertainty) — عرض الدرجات والحدود.
+
+Acceptance criteria:
+- وثيقة هندسة السلامة السريرية مع حالات استخدام (use-cases) ومستويات الثقة المطلوبة وعمليات التدخل ا��بشري.
+- قائمة واضحة لما يُسمح بإرساله إلى مزود الـLLM (allowlist) وما يجب تعقيمه.
+
+Verified from repository:
+- توجد طبقة LLM client (`server/_core/llm.ts`) لكن لا توجد سياسات سلامة/allowlist موثقة أو طبقة تصفية.
+
+Needs runtime verification:
+- أمثلة واقعية لاستدعاءات LLM في staging للتحقق من المدخلات والمخرجات والمسارات.
+
+Requires product/clinical decision:
+- تحديد ما هي التوصيات التي تُعتبر "عالية المخاطر" وتتطلب مراجعة بشرية فورية.
+
+---
+
+8) Title: Clinical data privacy and LLM data-minimization (P1)
+
+Priority: P1
+Execution order: P1-7
+
+Problem:
+طبقة LLM موجودة ولكن لا توجد سياسات واضحة لمنع تسريب PHI/PII أو لضمان تقليل إرسال بيانات حساسة إلى موفّري النماذج.
+
+Focus areas:
+- PHI/PII minimization
+- De-identification strategies
+- Allowlist of fields/data التي يمكن إرسالها
+- Logging / auditability of requests and redactions
+- Provider/model data retention expectations (documented per provider)
+- Model/provider configuration (temperature, max tokens, streaming policy)
+- عدم إرسال patient identifiers غير الضرورية (IDs, full names, MRN)
+
+Proposed solution:
+- تصميم طبقة preprocessing تقوم بتطبيق قواعد allowlist/denylist وعمليات تعقيم (hashing/partial redaction) قبل إرسال أي محتوى للـLLM.
+- تسجيل كل طلب/ردّ مع علامات زمنية ومؤشر redaction، وتخزين دليل المصدر (evidence URL/ID) إن أمكن.
+
+Acceptance criteria:
+- مكتبة صغيرة للـpreprocessing وملف سياسات قابل للتدقيق في repo (لا تُفعّل في الإنتاج إلا بعد المراجعة).
+
+Verified from repository:
+- وجود `server/_core/llm.ts` واستخدام ENV.forgeApiKey/ENV.forgeApiUrl.
+
+Needs runtime verification:
+- تحليل استدعاءات LLM أثناء التشغيل لمعرفة ما إذا كان يتم إرسال PHI/PII.
+
+Requires product/clinical decision:
+- تحديد ما يعتبر PHI/PII في نطاق التطبيق والبيانات المُصرّح إرسالها لأغراض المساعدة.
+
+---
+
+9) Title: Guidelines / Evidence ingestion & Search (P2)
+
 Priority: P2
-Problem: The README explicitly notes that no storage bucket is created and recommends adding one before supporting attachments (PDFs, images, certs). The repo lacks code to manage attachments currently.
-Root cause: Attachments functionality not yet implemented.
-Evidence (code):
-- supabase/README.md notes "No Supabase Storage bucket is created because the current UI does not persist PDF, image ...".
-Files affected:
-- supabase/README.md
-- potential client/server storageProxy and server/storage.ts for implementation
-Risk:
-- Low: Not a blocker, but required for later features like certificates and evidence documents.
+Execution order: P2-1
+
+Problem:
+جدول `guidelines` موجود ولكنه يفتقر لأدوات ingestion، فهرسة، وبحث مدعوم بالأدلة.
+
 Proposed solution:
-- Add a private Supabase bucket with owner-scoped policies when implementing attachments; update storageProxy.ts and server/storage.ts and client upload UI accordingly.
+- تصميم pipeline مخطط لاستيراد قواعد/مستندات مع metadata (title, year, source_url, tier, sections) وواجهة بحث أساسية.
+- ربط الأدلة مع التوصيات وDRP حيثما أمكن.
+
 Acceptance criteria:
-- Storage bucket created in staging, uploads controlled by owner policies, client can upload/download attachments.
-Migration required: No (infrastructure change on Supabase)
-Dependencies:
-- Supabase project admin access.
-What is verified from code: README statements and existence of server/storage.ts and server/_core/storageProxy.ts.
-What is assumption/needs verification: No active code currently writes to Supabase Storage.
-What requires running app/Supabase to confirm: Upload/download behavior.
+- تصميم API لاستيراد guideline metadata وواجهة بحث بسيطة في staging.
+
+Verified from repository:
+- وجود جدول `guidelines` في schema.sql لكن لا توجد أدوات ingestion واضحة.
+
+Needs runtime verification:
+- تجربة ingestion لمستند واحد أو اثنين في staging.
+
+Requires product/clinical decision:
+- تحديد مصادر الأدلة المقبولة (local, WHO, national guidelines).
 
 ---
 
-7) Title: Missing Medications/Formulary table and DRP storage
-Priority: P1
-Problem: There is no medications table or formulary model, and no storage model for detected Drug Related Problems (DRPs).
-Root cause: Domain modeling for medication management not implemented yet.
-Evidence (code):
-- supabase/schema.sql lacks medications, formularies, drug_related_problems tables.
-Files affected:
-- supabase/schema.sql
-- client UI pages that will use medication lists / reconciliation
-Risk:
-- High: Medication workflows (orders, reconciliation, DRP detection) require these tables; missing them blocks core functionality.
-Proposed solution:
-- Design medications and DRP tables and include fields for identifiers (e.g., RxNorm/CVN), dosing, start/end dates, indication, prescriber, source.
-- Implement DRP results table with references to patient, medication, detected_problem, severity, suggested_intervention, and timestamp.
+10) Title: Storage / Attachments (P2)
+
+Priority: P2
+Execution order: P2-2
+
+Problem:
+لا تُعتبر Supabase Storage أولوية قبل تحديد حالات استخدام التحميل/المرفقات.
+
+Proposed approach:
+- احتفظ بقرار وضع Storage كـP2. عند وجود use-cases محددة (PDFs, images, certificates, lab reports) نُنشئ bucket خاص وRLS مناسبة.
+
 Acceptance criteria:
-- Schema design doc reviewed.
-- Migrations prepared for staging.
-Migration required: Yes (when implemented)
-Dependencies:
-- Clinical product input on minimum viable fields.
-What is verified from code: Missing tables.
-What is assumption/needs verification: How UI maps to medication data structures.
-What requires running app/Supabase to confirm: Reconciliation flows.
+- قائمة use-cases للمرفقات ومواصفات الأمن والـRLS قبل إنشاء البوكت.
+
+Verified from repository:
+- `supabase/README.md` يذكر عدم وجود bucket حالياً.
+
+Needs runtime verification:
+- اختبار رفع ملف واحد في staging بعد إنشاء bucket.
+
+Requires product/clinical decision:
+- تحديد أنواع المرفقات المسموح بها وسياسات الاحتفاظ.
 
 ---
 
-8) Title: Dev environment and runbook missing or incomplete
-Priority: P1
-Problem: The repository lacks a concise dev runbook and env.example to quickly stand up a local dev environment with Supabase staging and stubbed credentials.
-Root cause: Early stage project scaffolding didn't include a full onboarding runbook.
-Evidence (code):
-- No .env.example found in repo root.
-- package.json includes dev/build scripts but no clear step-by-step in README for local dev.
-Files affected:
-- README (repo root / client README if exists)
-- package.json
-Risk:
-- Medium: Slower onboarding and risk of developers misconfiguring env keys or accidentally committing secrets.
-Proposed solution:
-- Add docs/DEV_RUNBOOK.md and .env.example with placeholders for VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, DATABASE_URL, OAUTH_SERVER_URL, etc.
-- Include sample test user creation scripts and instructions to seed minimal data.
-Acceptance criteria:
-- A developer can follow DEV_RUNBOOK.md to run the app locally and run basic integration tests.
-Migration required: No
-Dependencies:
-- None; purely repo docs and small code changes to ensure dev-friendly config.
-What is verified from code: Missing .env.example and runbook.
-What is assumption/needs verification: That existing scripts work with minimal env values — requires local run.
-What requires running app/Supabase to confirm: Full dev flow.
+11) Title: Build / Dependencies (P3)
 
----
-
-9) Title: Potential build/dependency mismatches (tailwind/nanoid overrides, esbuild version)
 Priority: P3
-Problem: package.json contains dependency overrides and older major versions (esbuild pinned to ^0.25.0, tailwindcss v4 with a nanoid override). This may cause build or security issues.
-Root cause: Dependency pinning and mixing of ecosystem versions without harmonization.
-Evidence (code):
-- package.json dependencies: esbuild ^0.25.0, tailwindcss ^4.1.14 and an overrides entry: "tailwindcss>nanoid": "3.3.7".
-Files affected:
-- package.json
-Risk:
-- Low/Medium: build failures, security alerts from outdated packages.
+Execution order: بعد P1-1 (Dev environment ready)
+
+Problem:
+اعتمادات قديمة أو overrides موجودة في package.json يمكن أن تسبب فشل build أو تحذيرات أمنية.
+
 Proposed solution:
-- Run `pnpm install` and `pnpm build` in CI/dev to identify warnings; incrementally update esbuild and tailwind to supported versions and test.
+- بعد أن يعمل dev environment، شغّل `pnpm install` و `pnpm build` و `pnpm lint` في CI/locally، ثم اختبر تحديث الحزم بالتدريج.
+
 Acceptance criteria:
-- Clean dev build and CI without critical dependency vulnerabilities.
-Migration required: No
-Dependencies:
-- Basic CI run or local dev build.
-What is verified from code: package.json entries.
-What is assumption/needs verification: Build success; requires running build.
-What requires running app/Supabase to confirm: None — local build only.
+- بيئة dev قابلة للتشغيل وبناء نظيف في CI.
+
+Verified from repository:
+- package.json يحتوي على esbuild ^0.25.0 و tailwindcss ^4.x و override لنanoid.
+
+Needs runtime verification:
+- تشغيل build محلي وCI.
+
+Requires product/clinical decision:
+- لا يتطلب قرارات سريرية، لكنه يتطلب توقيتًا مناسبًا للتحديثات دون تعطيل الإنتاج.
 
 ---
 
-10) Title: Documentation gap for role-based access (admin, clinical_pharmacist, pharmacy_student, supervisor)
-Priority: P2
-Problem: Schema defines roles in profiles.role but there is no documentation or code-level enforcement showing how these roles affect UI/permissions.
-Root cause: Roles defined at DB level but role-based UI/UX and server checks may be incomplete.
-Evidence (code):
-- supabase/schema.sql profiles.role check (admin, clinical_pharmacist, pharmacy_student, supervisor)
-Files affected:
-- supabase/schema.sql
-- client/src (authorization usage may be implemented in hooks/components, needs search)
-Risk:
-- Medium: Users may see actions they shouldn't or be blocked from necessary actions.
-Proposed solution:
-- Map role -> permissions matrix, update server-side authorization checks, and conditionally render UI based on roles.
-Acceptance criteria:
-- Role-permission matrix documented.
-- Server-side checks in place for at least critical flows (e.g., editing clinical interventions, accepting/rejecting interventions).
-Migration required: No (documentation + code changes)
-Dependencies:
-- Product decisions on role capabilities.
-What is verified from code: role exists in profiles.
-What is assumption/needs verification: That UI & server enforce role-based permissions currently — requires code search and tests.
-What requires running app/Supabase to confirm: Role assignment and permission tests.
+End of Proposed Issues V2.
 
----
+ملاحظات ختامية:
+- لم أقم بأي تغييرات تنفيذية على DB أو RLS أو أي عملية إنتاجية. هذا التعديل وثائقي فقط على الفرع `feature/clinpharm-audit-report` كما طلبت.
+- لن أفتح أي Issues فعلية أو أقوم بأي PRs تنفيذية أو أبدأ ترحيلات دون موافقتك الصريحة.
 
-End of Proposed Issues list.
-
-ملف محفوظ على: docs/PROPOSED_ISSUES.md في فرع feature/clinpharm-audit-report.
-
-سأتوقف هنا بانتظار مراجعتك. لا أفتح Issues فعلية أو أبدأ PRs كما طلبت.
+الخطوة التالية:
+- أكمل التعديل وحفِظته هنا كـV2. سأنتظر تأكيدك أو أي تعديلات أخرى قبل المضي قدماً.
