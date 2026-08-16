@@ -46,3 +46,11 @@ android/app/build/outputs/apk/debug/app-debug.apk
 ```bash
 adb install -r android/app/build/outputs/apk/debug/app-debug.apk
 ```
+
+## اختبار الواجهة العربية
+
+يمكن معاينة اتجاه العربية مباشرة بإضافة `?lang=ar` إلى عنوان الويب، مثل `https://clinpharm-fqovizyz.manus.space/?lang=ar`. يترجم الوضع العربي النصوص الأساسية في التنقل والمصادقة واللوحات السريرية، مع بقاء اللغة الإنجليزية fallback عند غياب العربية. استخدم نسخة APK التي بُنيت بعد آخر تحديث للتعريب عند اختبار WebView على الهاتف.
+
+## نتيجة release الأخيرة
+
+تم إنتاج `android/app/build/outputs/apk/release/app-release-unsigned.apk` للتحقق المحلي بحجم يقارب 3.5 MB. لم تُنشأ نسخة موقعة لأن keystore ومتغيراته غير متوفرة، كما اختفى Gradle daemon في نهاية المحاولة تحت ضغط الذاكرة بعد اكتمال مهام البناء الأساسية؛ لا يُعد هذا artifact صالحًا للتوزيع حتى يوقّعه مالك المشروع بمفتاح release آمن.

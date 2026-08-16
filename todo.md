@@ -215,3 +215,11 @@
 - [x] Require patient context as well as evidence for the Interventions/SOAP save action and test the combined gate.
 - [x] Extend queue regression coverage to include a patient-linked update operation in addition to create.
 - [x] Record hook-level/local queue verification limitations explicitly without claiming live Supabase CRUD.
+
+## Follow-up: device validation, live Supabase, Arabic UI, and release signing
+
+- [x] Prepare the latest debug APK and a user-facing real-device offline test checklist for Patient intake, Copilot, training, local persistence, and queue recovery.
+- [x] Prepare safe Supabase activation instructions for running schema.sql, using a disposable test account, and validating Auth, session restoration, CRUD, and sync conflicts without exposing secrets.
+- [x] Translate the primary dashboard, authentication panel, Copilot, patient intake, clinical documentation, training, and safety labels to Arabic while preserving the existing English fallback and RTL direction support.
+- [x] Add release signing readiness checks and document the user-owned keystore requirements without generating or storing private signing secrets.
+- [x] Run final TypeScript, Vitest, web build, Android debug build, and visual verification after the follow-up changes.
