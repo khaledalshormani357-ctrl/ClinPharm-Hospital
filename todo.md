@@ -176,3 +176,13 @@
 - [x] Build a debug APK artifact and add a reproducible Capacitor/Gradle build path.
 - [x] Verify the Android wrapper build inputs and preserve the web preview.
 - [x] Document APK installation and signing limitations clearly without exposing secrets.
+
+## Next phase: Android device validation, branding, release signing, and Supabase readiness
+
+- [x] Prepare a real-device APK validation checklist for patient flows, Copilot gating, training, and offline persistence.
+- [x] Add branded Android launcher icon and splash-screen assets/configuration without storing secrets.
+- [x] Verify the branded debug APK after Capacitor sync and Gradle build.
+- [x] Add a secure release-signing configuration template that reads keystore values from environment variables and keeps keystore files out of Git.
+- [x] Document release signing, APK installation, and device test evidence requirements.
+- [x] Document deferred Supabase activation prerequisites and live E2E validation steps.
+- [x] Run type checks and Vitest after the Android branding/signing changes.

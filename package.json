@@ -13,6 +13,7 @@
     "db:push": "drizzle-kit generate && drizzle-kit migrate",
     "android:sync": "pnpm build && cap sync android",
     "android:build": "pnpm run android:sync && cd android && ./gradlew assembleDebug",
+    "android:release": "pnpm run android:sync && cd android && ./gradlew assembleRelease --no-daemon --max-workers=1",
     "android:open": "cap open android"
   },
   "dependencies": {
