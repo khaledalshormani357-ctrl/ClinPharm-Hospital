@@ -95,9 +95,19 @@
 
 ## Private GitHub repository setup
 
-- [ ] Audit the current Git state, ignored files, environment files, keystores, release kits, and generated artifacts before publishing.
-- [ ] Strengthen ignore rules so Supabase secrets, `.env` files, keystores, passwords, release kits, and local build outputs cannot be committed.
-- [ ] Create a new private GitHub repository for the existing ClinPharm project without creating or replacing the app.
-- [ ] Commit and push the current source, Android wrapper, Supabase schema/docs, tests, and project documentation to the private repository.
-- [ ] Verify the remote, default branch, repository visibility, and absence of secret-like files in the pushed tree.
-- [ ] Document the repository URL and safe GitHub Secrets required for any future Supabase workflow.
+- [x] Audit the current Git state, ignored files, environment files, keystores, release kits, and generated artifacts before publishing.
+- [x] Strengthen ignore rules so Supabase secrets, `.env` files, keystores, passwords, release kits, and local build outputs cannot be committed.
+- [x] Create a new private GitHub repository for the existing ClinPharm project without creating or replacing the app.
+- [x] Commit and push the current source, Android wrapper, Supabase schema/docs, tests, and project documentation to the private repository.
+- [x] Verify the remote, default branch, repository visibility, and absence of secret-like files in the pushed tree.
+- [x] Document the repository URL and safe GitHub Secrets required for any future Supabase workflow.
+
+## GitHub repository verification follow-up
+
+- [ ] Verify and record that the private GitHub tree contains the Android wrapper, Capacitor config, tests, Supabase schema/docs, and project documentation.
+- [ ] Add a permanent repository document with the private GitHub URL and names/purposes of safe GitHub Secrets for future Supabase workflows, without secret values.
+
+## Android wrapper repository gap
+
+- [ ] Restore the existing Capacitor Android wrapper in the current project tree before pushing the repository update; do not create a new app or replace the React app.
+- [ ] Re-run the Android debug build and verify the regenerated wrapper is represented in the private GitHub tree while excluding local.properties and build outputs.
