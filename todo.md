@@ -69,3 +69,36 @@
 
 - [x] Render conflict status and recovery messaging explicitly for patient-conflict and other conflict queue entries.
 - [x] Re-run final visual verification after explicit conflict visibility is implemented.
+
+## Supabase production verification request
+
+- [ ] Verify Supabase project connection, configuration, and safe execution prerequisites.
+- [ ] Apply supabase/schema.sql and verify tables, indexes, and RLS policies in the real Supabase project.
+- [ ] Create or use a user-provided disposable Supabase test account without storing credentials in code or logs.
+- [ ] Verify sign-in, session restoration, password-reset request, patient sync, medication-review CRUD, and conflict recovery against real Supabase.
+- [ ] Add and run E2E tests for patient creation, medication review, and conflict upload/recovery.
+
+## Deferred Supabase work
+
+- [ ] Deferred: execute supabase/schema.sql and verify the real Supabase project when access is available.
+- [ ] Deferred: create/use a disposable Supabase test account and run live auth/sync validation.
+- [ ] Deferred: add and run live Supabase E2E tests after database activation.
+
+## Non-Supabase continuation
+
+- [x] Improve the remaining clinical and educational workflows without depending on live Supabase access.
+- [x] Add additional automated tests and visual verification for the continued workflows.
+
+## Prioritized non-Supabase improvements
+
+- [x] Persist chief complaint, allergies, and current therapy in the patient assessment draft and expose them to the review step.
+- [x] Add a visible evidence/source validation state to the recommendation step, including an explicit insufficient-evidence path.
+- [x] Add additional unit tests for high-risk Copilot gating, drug-related problem detection, and patient draft serialization.
+- [x] Perform desktop and mobile visual verification after these improvements.
+
+## Continued workflow verification gaps
+
+- [x] Expose complaint, allergies, and current therapy in a later Copilot review/summary step before completion.
+- [x] Add dedicated DRP-detection tests for interaction, high-alert, renal-dose, and omission scenarios.
+- [x] Add one concrete educational workflow improvement, such as a case progress action or question completion state, without requiring live Supabase.
+- [x] Re-run automated tests and desktop/mobile visual verification after these workflow changes.

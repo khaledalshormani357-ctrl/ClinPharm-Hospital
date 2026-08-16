@@ -7,6 +7,18 @@ describe("clinical engine", () => {
     expect(problems.map((problem) => problem.code)).toEqual(expect.arrayContaining(["INTERACTION", "DOSE", "MONITORING"]));
   });
 
+  it("flags allergy and omission risks in a patient context", () => {
+    const problems = detectDrugRelatedProblems([{ name: "amoxicillin", doseMg: 500, frequency: "tid" }], { egfr: 90, allergies: ["amoxicillin"], diagnoses: ["diabetes"] });
+    expect(problems.map((problem) => problem.code)).toEqual(expect.arrayContaining(["CONTRAINDICATION", "OMISSION"]));
+  });
+
+  it("flags a high-alert interaction and renal dose risk", () => {
+    const problems = detectDrugRelatedProblems([{ name: "warfarin", doseMg: 5, frequency: "daily", highAlert: true }, { name: "ibuprofen", doseMg: 400, frequency: "q8h" }, { name: "enoxaparin", doseMg: 40, frequency: "daily", renalThreshold: 60 }], { egfr: 35, allergies: [], diagnoses: [] });
+    expect(problems.some((problem) => problem.code === "INTERACTION")).toBe(true);
+    expect(problems.some((problem) => problem.code === "MONITORING")).toBe(true);
+    expect(problems.some((problem) => problem.code === "DOSE")).toBe(true);
+  });
+
   it("requires both a source and an evidence level", () => {
     expect(evidenceGate("https://example.org/guideline", "Guideline")).toBe(true);
     expect(evidenceGate(undefined, "Guideline")).toBe(false);
