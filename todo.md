@@ -135,3 +135,36 @@
 - [x] Add a dedicated local training performance summary showing completed questions, accuracy, correct count, and session duration/elapsed time.
 - [x] Persist the training performance summary locally and add Vitest coverage for summary calculation and serialization.
 - [x] Re-run type checks, tests, and desktop/mobile visual verification after the summary fix.
+
+## Supabase connection re-enabled
+
+- [x] Deferred by user: verify the newly connected Supabase URL, anon configuration, and safe environment setup without exposing secrets.
+- [x] Deferred by user: verify that the ClinPharm schema tables, indexes, and RLS policies exist in the connected project.
+- [x] Deferred by user: verify Supabase Auth session restoration, sign-in/reset-password request behavior, and user isolation.
+- [x] Deferred by user: run live-safe patient, medication-review, and conflict-sync checks using a disposable authenticated test session.
+- [x] Deferred by user: run the project test suite and final desktop/mobile visual verification after the Supabase connection is confirmed.
+
+## Supabase deferred again
+
+- [x] Deferred by user: keep live Supabase schema execution, live Auth validation, and live E2E checks deferred until the user has suitable computer access.
+- [x] Continue only with local-cache clinical and educational improvements that do not require live Supabase.
+
+## Local clinical timeline and documentation phase
+
+- [x] Add a local patient timeline model with timestamped assessment, medication review, intervention, SOAP, and alert events.
+- [x] Add a local timeline view with filtering by event type and patient identifier.
+- [x] Add quick documentation templates for SOAP, medication review, and intervention notes with local save.
+- [x] Add unit tests for timeline ordering/filtering and template serialization.
+- [x] Run type checks, tests, and desktop/mobile visual verification for this local phase.
+
+## Structured documentation template hardening
+
+- [x] Render template-specific fields for SOAP, medication review, and intervention documentation.
+- [x] Add pure serialization and parsing functions for structured template entries and save them in the local timeline.
+- [x] Add Vitest coverage for template field mapping, serialization, and parsing.
+- [x] Re-run type checks, tests, and desktop/mobile visual verification after the structured template fix.
+
+## Documentation template mapping test hardening
+
+- [x] Add explicit Vitest assertions for each documentation template's expected field labels and placeholders.
+- [x] Re-run type checks, tests, and desktop/mobile visual verification after strengthening template mapping tests.
