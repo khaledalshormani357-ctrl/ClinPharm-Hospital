@@ -202,4 +202,16 @@
 
 - [x] Add a targeted regression test for the upgraded SOAP/intervention evidence gate and ensure no placeholder source can be saved.
 - [x] Remove patient_id null defaults from medication review/intervention/case save paths by requiring or explicitly selecting a patient context.
-- [ ] Complete a focused post-change verification pass for navigation, authentication, forms, offline behavior, RTL, and cloud/local data operations.
+- [x] Complete a focused post-change verification pass for navigation, authentication, forms, offline behavior, RTL, and cloud/local data operations.
+
+## Runtime verification hardening
+
+- [x] Add regression coverage for patient-context-required save gating in Medication review, Interventions, and Cases.
+- [x] Perform and record an RTL-specific visual verification pass with Arabic direction enabled.
+- [x] Exercise and document local/cloud clinical-record save/update queue behavior after the evidence and patient-context hardening.
+
+## Verification correction follow-up
+
+- [x] Require patient context as well as evidence for the Interventions/SOAP save action and test the combined gate.
+- [x] Extend queue regression coverage to include a patient-linked update operation in addition to create.
+- [x] Record hook-level/local queue verification limitations explicitly without claiming live Supabase CRUD.

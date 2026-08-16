@@ -7,6 +7,10 @@ import superjson from "superjson";
 import App from "./App";
 import { startLogin } from "./const";
 import "./index.css";
+import { applyUiLocale } from "./lib/locale";
+
+const requestedLanguage = typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("lang");
+applyUiLocale(requestedLanguage || (typeof navigator === "undefined" ? "en" : navigator.language), document.documentElement);
 
 const queryClient = new QueryClient();
 
