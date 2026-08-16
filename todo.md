@@ -114,5 +114,5 @@
 
 ## Optional GitHub verification workflow
 
-- [ ] Add a manually triggered GitHub Actions workflow that runs project checks and read-only Supabase verification using protected GitHub Secrets only.
-- [ ] Document that the workflow must not auto-apply migrations or print database URLs, passwords, publishable keys, or service-role keys.
+- [x] Add a manually triggered GitHub Actions workflow that runs project checks and read-only Supabase verification using protected GitHub Secrets only.
+- [x] Document that the workflow must not auto-apply migrations or print database URLs, passwords, publishable keys, or service-role keys.
