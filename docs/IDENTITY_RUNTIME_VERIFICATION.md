@@ -1,165 +1,100 @@
-# Identity Runtime Verification Plan — ClinPharm Hospital
+# Identity Runtime Verification Report — ClinPharm Hospital
 
-## Status and scope
+## Scope and execution boundary
 
-**Status: NOT YET PERFORMED.** This document defines the staging-only runtime verification procedure. It does not report completed runtime tests, does not classify any runtime behavior as `VERIFIED`, and does not authorize production changes.
+This report records the **staging-only** verification attempt performed on the GitHub audit branch. No production endpoint was accessed, no application code was changed, no Supabase schema or RLS policy was changed, no migration was created, and no Supabase user or clinical record was created. Secrets, passwords, API keys, JWTs, and token values are intentionally absent.
 
-The execution must use **STAGING only**. It must not modify production, application code, database schema, RLS policies, authentication architecture, or repository secrets. It must not create or provision Supabase users. No runtime test has been performed as part of this documentation change.
+The requested runtime checks require an explicitly identified staging application plus pre-existing authenticated identities. The available session configuration and environment metadata did not identify a staging deployment, and no authorized staging browser session or pre-existing User A/User B evidence was available. Accordingly, no OAuth login, Supabase Auth session inspection, clinical write, or RLS data operation was performed against an unidentified environment.
 
-Each executed test must record the test name, exact procedure, result, evidence, and one of the following classifications: `VERIFIED`, `UNVERIFIED`, `CONFLICT`, or `SECURITY RISK`. Until the staging procedure is actually run, the applicable classification for every runtime assertion in this document is **UNVERIFIED — not executed**.
+> **Result status:** runtime verification is **BLOCKED**. In the required classification vocabulary, blocked runtime assertions are recorded as **UNVERIFIED**. No runtime assertion is classified as `VERIFIED`.
 
-## Preconditions and safety controls
+## Evidence-handling rules
 
-The operator must have access to the existing staging Manus OAuth session and an existing staging Supabase environment. If two authenticated staging identities are required for RLS isolation, they must already exist; this verification must not create or provision them. Secrets, API keys, JWT secrets, service-role keys, passwords, access tokens, and complete JWTs must never be printed, committed, or copied into this report.
-
-The operator must capture only redacted evidence: field names, HTTP status classes, table/procedure names, redacted identifiers, and sanitized response metadata. JWT inspection is limited to the non-sensitive payload fields necessary for identity comparison; the token itself must never be exposed.
-
-## Verification record template
-
-For each test, complete the following record only after the staging procedure has been executed:
-
-| Field | Required content |
+| Rule | Applied control |
 |---|---|
-| Test name | A unique name for the runtime check |
-| Exact procedure | The UI/API steps performed in staging |
-| Result | Observed behavior, including allow/deny or present/absent |
-| Evidence | Redacted screenshot, response status, query result summary, or log reference |
-| Classification | `VERIFIED`, `UNVERIFIED`, `CONFLICT`, or `SECURITY RISK` |
+| Environment boundary | Only an explicitly identified staging target may be used; none was identified in the available session metadata. |
+| Identity accounts | No user was created, provisioned, reset, or modified. |
+| Data writes | No harmless staging record was written because the target and cleanup path were not established. |
+| Sensitive values | Evidence contains only file names, line numbers, configuration presence states, and redacted status information. |
+| Classification | `UNVERIFIED` means not proven by a staging runtime observation. Static observations are identified explicitly and are not treated as runtime proof. |
 
-## A. Manus identity
+## Test record
 
-**Objective:** determine the authenticated Manus `openId` during a staging OAuth login without exposing the OAuth token.
+| Test name | Exact procedure performed | Result | Evidence | Classification |
+|---|---|---|---|---|
+| RT-00 — Staging target identification | Inspected the availability state of Supabase, OAuth, and application configuration variables without printing values; inspected repository workflow and audit references for a distinct staging endpoint. | Values were present but none carried a staging/test identifier; no explicit staging URL or database target was available for safe selection. | Presence-only configuration check: public Supabase/OAuth variables were present but `PRESENT_NOT_STAGING_LABELED`; `SUPABASE_DB_URL` was absent. Audit documents describe staging as a prerequisite rather than an available target. | `UNVERIFIED` — BLOCKED |
+| RT-01 — Existing staging Manus user | Checked session configuration for a browser connection and staging Manus session before attempting OAuth. | No enabled user-browser connector or identified staging OAuth session was available; no login was attempted. | Session configuration showed the available user-browser connector disabled. No `openId` or JWT payload was read. | `UNVERIFIED` — BLOCKED |
+| RT-02 — Corresponding Supabase Auth user | Attempted to establish whether an existing staging Supabase Auth user could be inspected without Admin credentials or user provisioning. | Cannot determine whether a corresponding `auth.users` row exists. Public client configuration does not grant safe user enumeration, and no authorized staging Admin/query path was supplied. | No `auth.users` query was issued; no service-role key was used or requested. | `UNVERIFIED` — BLOCKED |
+| RT-03 — Existing second staging user for RLS | Checked the available staging evidence for two pre-existing authenticated Supabase identities. | No evidence of User A and User B was available. Neither account was created or provisioned. | No authentication credentials, reusable staging sessions, or approved two-user test fixture was supplied. | `UNVERIFIED` — BLOCKED |
+| RT-04 — Manus OAuth identity and server session | Planned staging OAuth login followed by redacted extraction of `openId` and server-session fields. | Not executed because RT-00 and RT-01 were blocked. | No OAuth flow, cookie, token, or JWT payload was accessed. | `UNVERIFIED` — BLOCKED |
+| RT-05 — Supabase Auth session, `auth.users.id`, and `auth.uid()` | Planned inspection after a verified staging Manus session, using only redacted identifiers. | Not executed because no explicit staging environment and no authenticated staging identity were available. | No Supabase Auth call or protected table request was sent to an unidentified endpoint. | `UNVERIFIED` — BLOCKED |
+| RT-06 — Clinical UI → tRPC/server → database write | Planned one harmless, pre-approved staging record with documented cleanup. | Not executed; no record was created and no cleanup was required. | No clinical mutation, API write, or database query was performed. | `UNVERIFIED` — BLOCKED |
+| RT-07 — Two-user RLS isolation matrix | Planned own-record create/read/update and cross-user read/update attempts for two pre-existing staging users. | Not executed because neither an explicit staging target nor two pre-existing test users were available. | No User A/User B request was sent; no schema or RLS policy was modified. | `UNVERIFIED` — BLOCKED |
+| RT-08 — Repository service-role search | Searched tracked non-document source for `service_role`, `SUPABASE_SERVICE_ROLE`, `SUPABASE_SERVICE_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`; collected file and line metadata only. | The only match was a negative assertion in `client/src/lib/supabase-live-config.test.ts:10`; no tracked non-document production code match was found for those service-role identifiers. | `client/src/lib/supabase-live-config.test.ts:10` asserts the publishable key must not contain the service-role marker. This proves only the tracked-source search result, not deployed-environment behavior. | `VERIFIED` — static-only; runtime service-role use remains `UNVERIFIED` |
+| RT-09 — Supabase client path inventory | Searched tracked client code for `createClient`, `auth.getSession`, password sign-in, and reset-password calls; collected file and line metadata only. | Client-side Supabase session/auth and repository paths exist, but they were not invoked against staging. | `client/src/lib/supabase/client.ts:10`; `client/src/lib/supabase/auth.ts:13,22,25`; `client/src/hooks/useCloudPatients.ts:21,87`; `client/src/hooks/useCloudClinicalRecords.ts:16,28,34,45`; `client/src/components/SupabaseAuthPanel.tsx:22`. | `VERIFIED` — static-only; runtime behavior remains `UNVERIFIED` |
 
-**Procedure:** perform a staging Manus OAuth login through the existing application flow. Inspect only the authenticated user metadata and the minimum non-sensitive JWT payload fields needed for comparison. Record the `openId` in redacted form, for example by retaining only a stable prefix and suffix.
+## Identity mapping status
 
-**Current result:** Not executed.
-
-**Current evidence:** None collected.
-
-**Current classification:** `UNVERIFIED`.
-
-## B. Supabase Auth
-
-**Objective:** determine whether the same identity has a corresponding `auth.users` record, whether the client receives a Supabase Auth session after Manus login, and what the actual Supabase user ID is in redacted form.
-
-**Procedure:** after the staging Manus login, inspect the client authentication state through the existing application flow. Determine whether a Supabase session exists without printing access or refresh tokens. Using an authorized staging-only inspection path, check whether a corresponding `auth.users` record exists and record only a redacted Supabase user ID.
-
-**Current result:** Not executed. No Supabase users were created or provisioned.
-
-**Current evidence:** None collected.
-
-**Current classification:** `UNVERIFIED`.
-
-## C. Identity mapping
-
-The following mapping must be determined explicitly during staging execution:
+The requested mapping cannot be confirmed without an authenticated staging run:
 
 ```text
-Manus OAuth openId
-        |
-        v
-Supabase auth.users.id
-        |
-        v
-Supabase auth.uid()
-        |
-        v
-Clinical table owner_id
+Manus openId                         UNVERIFIED — no staging OAuth session
+      | 
+      v
+Supabase auth.users.id               UNVERIFIED — no authorized staging user inspection
+      |
+      v
+Supabase auth.uid()                  UNVERIFIED — no staging Supabase session/table request
+      |
+      v
+clinical table owner_id              UNVERIFIED — no harmless staging write/read performed
 ```
 
-The runtime report must state whether each arrow exists, is absent, or conflicts with the other identity source. It must distinguish a Manus session from a Supabase Auth session and must not infer equivalence from matching display names or email addresses alone.
+The current repository contains static evidence that the server Manus path handles `openId` through its own server session and Drizzle/MySQL user path, while Supabase clinical tables use `auth.users.id`, `owner_id`, and RLS checks based on `auth.uid()`. That evidence is recorded in `docs/IDENTITY_AUTH_STATIC_AUDIT.md`; it does **not** establish a runtime mapping and must not be treated as one.
 
-**Current result:** Not executed.
+## Static path evidence, not runtime proof
 
-**Current evidence:** None collected.
+The following locations identify the paths that need confirmation when a named staging environment and authorized existing identities are available:
 
-**Current classification:** `UNVERIFIED`.
+| Concern | Observed tracked location(s) | Runtime conclusion |
+|---|---|---|
+| Manus server session / `openId` | `server/_core/sdk.ts` (OAuth exchange, session verification, and `openId` authentication path) | `UNVERIFIED` |
+| Client Supabase session | `client/src/lib/supabase/auth.ts:13,22,25`; `client/src/components/SupabaseAuthPanel.tsx:22` | `UNVERIFIED` |
+| Clinical repository writes | `client/src/lib/supabase/clinicalRepository.ts`; `client/src/lib/supabase/patientRepository.ts`; cloud hooks listed in RT-09 | `UNVERIFIED` |
+| RLS source policy | `supabase/schema.sql:99–117` | Policy text exists; runtime allow/deny behavior is `UNVERIFIED` |
+| Service-role identifiers | `client/src/lib/supabase-live-config.test.ts:10` only | Tracked-source absence is static-only; deployed use is `UNVERIFIED` |
 
-## D. Clinical write path
+## RLS matrix
 
-**Objective:** identify the exact staging UI → tRPC/server → database write path using one harmless staging test record only, without modifying schema or RLS.
+No rows are marked ALLOW or DENY because the two pre-existing staging users required by the test were not available for safe execution.
 
-**Procedure:** use an already authorized staging identity and a harmless test record only if the staging environment and its cleanup procedure are already available. Trace the UI action to the client repository, tRPC procedure or server route, database call, and resulting clinical table row. Determine which procedure performs the write, how `owner_id` is generated, and whether it corresponds to the authenticated Supabase user ID. Record the cleanup outcome without including patient data or credentials.
+| User | Operation | Result | Classification |
+|---|---|---|---|
+| User A | Create own harmless record | BLOCKED — no identified staging user/session | `UNVERIFIED` |
+| User A | Read own record | BLOCKED — no identified staging user/session | `UNVERIFIED` |
+| User A | Update own record | BLOCKED — no identified staging user/session | `UNVERIFIED` |
+| User A | Read User B record | BLOCKED — no User B and no staging target | `UNVERIFIED` |
+| User A | Update User B record | BLOCKED — no User B and no staging target | `UNVERIFIED` |
+| User B | Create/read/update own record | BLOCKED — no User B and no staging target | `UNVERIFIED` |
+| User B | Read/update User A record | BLOCKED — no User A and no staging target | `UNVERIFIED` |
 
-**Current result:** Not executed. No staging record was written.
+## Required inputs before re-running
 
-**Current evidence:** None collected.
+To run the blocked tests safely, provide an explicitly named staging application URL or deployment identifier and access to two **already existing** staging identities. The identities must be usable through an authorized staging browser session or an approved, non-secret test mechanism. The test operator must also have an authorized read path capable of determining a redacted `auth.users.id` and observing `auth.uid()`/`owner_id` without using or exposing a service-role secret in this report.
 
-**Current classification:** `UNVERIFIED`.
+## Final conclusions
 
-## E. Service-role and Supabase client static search
+| Required question | Conclusion from this execution |
+|---|---|
+| Is Manus `openId` mapped to Supabase `auth.users.id`? | `UNVERIFIED` — blocked before staging login. |
+| Does Manus login create a Supabase session? | `UNVERIFIED` — no staging login performed. |
+| What reaches `auth.uid()`? | `UNVERIFIED` — no staging Supabase request was performed. |
+| What becomes `owner_id`? | `UNVERIFIED` — no staging clinical write was performed. |
+| Are clinical CRUD operations actually using Supabase? | `UNVERIFIED` at runtime; client repository paths exist statically. |
+| Is service_role used? | No tracked non-document source use was found by the static search, except a negative test assertion; deployed runtime use remains `UNVERIFIED`. |
+| Does RLS isolate users correctly? | `UNVERIFIED` — two pre-existing staging identities were not available. |
+| Is the current architecture safe to migrate? | `UNVERIFIED` — identity mapping and RLS runtime behavior remain unproven. |
 
-The repository search must cover the entire tracked repository for the following terms, while reporting filenames and line numbers only and never printing values:
+## Change boundary
 
-```text
-service_role
-SUPABASE_SERVICE_ROLE
-SUPABASE_SERVICE_KEY
-SUPABASE_SERVICE_ROLE_KEY
-createClient(
-SUPABASE_URL
-SUPABASE_ANON_KEY
-VITE_SUPABASE_URL
-VITE_SUPABASE_ANON_KEY
-```
-
-Search results must distinguish safe public client configuration from service-role or secret usage. Any service-role key in client code, committed environment file, browser bundle, or log is a `SECURITY RISK`. The search itself is a static inspection and must not be presented as runtime proof.
-
-**Current result:** Not recorded in this plan document.
-
-**Current evidence:** None collected.
-
-**Current classification:** `UNVERIFIED` for the runtime verification record.
-
-## F. RLS isolation in staging
-
-**Objective:** verify owner isolation using two already-existing authenticated staging users, User A and User B. Do not create or provision either user.
-
-For **User A**, execute and record: create a harmless staging record, read the record owned by User A, update the record owned by User A, attempt to read User B's record, and attempt to update User B's record. Record exact `ALLOW` or `DENY` outcomes and redacted evidence.
-
-For **User B**, execute the same operations symmetrically. A correct owner-isolated result should allow each user to create, read, and update their own record while denying cross-user reads and updates. Any unexpected cross-user access is a `SECURITY RISK`; any denial of an authorized own-record operation is a `CONFLICT` or an implementation failure requiring separate investigation.
-
-**Current result:** Not executed. No users or records were created.
-
-**Current evidence:** None collected.
-
-**Current classification:** `UNVERIFIED`.
-
-## G. Runtime architecture diagram
-
-The final report must replace the placeholders below with observed runtime facts. Until execution, this is a proposed verification model rather than a confirmed architecture:
-
-```mermaid
-flowchart TD
-  A[Manus OAuth login] --> B[Manus session / openId]
-  B --> C{Supabase Auth session exists?}
-  C -->|yes| D[Supabase auth.users.id]
-  C -->|no| E[Identity mapping absent or conflicting]
-  D --> F[auth.uid()]
-  F --> G[owner_id on clinical row]
-  G --> H[RLS owner-isolated CRUD]
-  A --> I[Existing app UI]
-  I --> J[tRPC or server repository]
-  J --> H
-```
-
-The final evidence must identify which portions actually ran in staging and which remain unverified.
-
-## H. Required final conclusions after execution
-
-After staging execution, the report must answer explicitly:
-
-1. Is Manus `openId` mapped to `supabase auth.users.id`?
-2. Does Manus login create a Supabase session?
-3. What reaches `auth.uid()`?
-4. What becomes `owner_id`?
-5. Are clinical CRUD operations actually using Supabase?
-6. Is `service_role` used, and if so, where and under what protection?
-7. Does RLS isolate users correctly for own-record and cross-user operations?
-8. Is the current architecture safe to migrate?
-
-At the time of this documentation change, all eight answers remain **UNVERIFIED because staging runtime execution has not been performed**.
-
-## Change boundary for this phase
-
-This phase adds only this verification-plan document. It does not run staging tests, create users, write clinical records, change application code, modify `supabase/schema.sql`, modify RLS policies, alter authentication architecture, create issues, or open pull requests.
+Only this documentation file was updated for the staging verification attempt. No application code, production configuration, Supabase schema, RLS policy, migration, authentication architecture, user account, or clinical data was modified.
