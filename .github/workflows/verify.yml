@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout feature branch
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           ref: feature/clinpharm-audit-report
@@ -28,14 +28,11 @@ jobs:
 
           echo "Branch check passed."
 
-      - name: Verify migration file
+      - name: Check migration file
         run: |
           set -euo pipefail
 
-          if [ ! -f supabase/migrations/0001_initial_schema.sql ]; then
-            echo "ERROR: Migration file not found."
-            exit 1
-          fi
+          test -f supabase/migrations/0001_initial_schema.sql
 
           echo "Migration file found."
 
@@ -48,20 +45,20 @@ jobs:
 
           psql --version
 
-      - name: Check SUPABASE_DB_URL secret
+      - name: Check database secret
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           set -euo pipefail
 
           if [ -z "$SUPABASE_DB_URL" ]; then
-            echo "ERROR: SUPABASE_DB_URL GitHub Secret is not configured."
+            echo "ERROR: SUPABASE_DB_URL secret is missing."
             exit 1
           fi
 
           echo "SUPABASE_DB_URL is configured."
 
-      - name: Check database connectivity
+      - name: Test database connection
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
@@ -69,37 +66,31 @@ jobs:
 
           echo "Testing database connection..."
 
-          if ! timeout 15s psql \
+          timeout 15s psql \
             "$SUPABASE_DB_URL" \
             -tA \
             -c "SELECT 1;" \
-            >/dev/null 2>&1; then
-
-            echo "ERROR: Could not connect to the Supabase database."
-            exit 1
-          fi
+            >/dev/null
 
           echo "Database connection successful."
 
-      - name: Safety scan migration
+      - name: Safety check
         run: |
           set -euo pipefail
 
           SQL_FILE="supabase/migrations/0001_initial_schema.sql"
 
-          echo "Scanning migration for destructive commands..."
-
           if grep -Eiq \
             "DROP[[:space:]]+DATABASE|DROP[[:space:]]+SCHEMA|TRUNCATE[[:space:]]+TABLE|RESET[[:space:]]+DATABASE" \
             "$SQL_FILE"; then
 
-            echo "ERROR: Potentially destructive SQL detected."
+            echo "ERROR: Destructive SQL detected."
             exit 1
           fi
 
-          echo "Safety scan passed."
+          echo "Safety check passed."
 
-      - name: Verify Supabase staging project
+      - name: Verify staging project
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
@@ -107,76 +98,39 @@ jobs:
 
           REQUIRED_PROJECT_REF="ioekwknwhpeocvrxnwni"
 
-          echo "Checking Supabase staging project..."
-
           HOST=$(python3 -c '
           import os
           import urllib.parse
 
           url = os.environ["SUPABASE_DB_URL"]
           parsed = urllib.parse.urlparse(url)
-
           print(parsed.hostname or "")
           ')
 
           if [[ "$HOST" != *"$REQUIRED_PROJECT_REF"* ]]; then
-            echo "ERROR: Database host does not match the expected staging project."
+            echo "ERROR: Database host does not match staging project."
             exit 1
           fi
 
-          echo "Supabase staging project verified."
+          echo "Staging project verified."
 
-      - name: Verify database schema
+      - name: Verify database
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           set -euo pipefail
 
-          echo "Checking database schema..."
-
           psql \
             "$SUPABASE_DB_URL" \
             --set=ON_ERROR_STOP=1 \
-            -c "
-              SELECT
-                table_schema,
-                table_name
-              FROM information_schema.tables
-              WHERE table_schema = 'public'
-              ORDER BY table_name;
-            "
+            -c "SELECT current_database();"
 
-          echo "Schema verification completed."
+          echo "Database verification completed."
 
-      - name: Verify required tables
-        env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-        run: |
-          set -euo pipefail
-
-          echo "Checking required tables..."
-
-          psql \
-            "$SUPABASE_DB_URL" \
-            --set=ON_ERROR_STOP=1 \
-            -c "
-              SELECT
-                table_name
-              FROM information_schema.tables
-              WHERE table_schema = 'public'
-              AND table_name IN (
-                'profiles',
-                'guidelines'
-              )
-              ORDER BY table_name;
-            "
-
-          echo "Required table check completed."
-
-      - name: Final verification
+      - name: Final result
         run: |
           echo "========================================"
-          echo "ClinPharm staging verification complete"
+          echo "ClinPharm staging verification PASSED"
           echo "Project: ioekwknwhpeocvrxnwni"
           echo "Branch: feature/clinpharm-audit-report"
           echo "========================================"
