@@ -1,53 +1,24 @@
 name: Apply Supabase staging migration
 
-# ============================================================
-# STAGING ONLY
-# Supabase project ref:
-# ioekwknwhpeocvrxnwni
-#
-# This workflow:
-# 1. Runs only on feature/clinpharm-audit-report
-# 2. Checks the migration file
-# 3. Scans for destructive SQL
-# 4. Checks the staging DB connection
-# 5. Applies the migration using psql
-#
-# Required GitHub Secret:
-# SUPABASE_DB_URL
-#
-# IMPORTANT:
-# Do NOT put the DB URL directly in this file.
-# ============================================================
-
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
   apply-migration:
-
-    # Run only when the workflow is manually started
-    # from the correct feature branch.
     if: github.ref == 'refs/heads/feature/clinpharm-audit-report'
-
     runs-on: ubuntu-latest
 
     steps:
 
-      # --------------------------------------------------------
-      # 1. Checkout the correct branch
-      # --------------------------------------------------------
       - name: Checkout feature branch
         uses: actions/checkout@v4
         with:
           ref: feature/clinpharm-audit-report
 
-      # --------------------------------------------------------
-      # 2. Validate Supabase project reference
-      # --------------------------------------------------------
-      - name: Validate explicit target project ref
+      - name: Validate target project
         run: |
           set -euo pipefail
 
@@ -55,35 +26,25 @@ jobs:
           CONFIGURED_PROJECT_REF="ioekwknwhpeocvrxnwni"
 
           if [ "$CONFIGURED_PROJECT_REF" != "$REQUIRED_PROJECT_REF" ]; then
-            echo "ERROR: Supabase project ref mismatch."
+            echo "ERROR: Project reference mismatch."
             exit 1
           fi
 
-          echo "Target Supabase staging project validated."
-          echo "Project ref: $REQUIRED_PROJECT_REF"
+          echo "Target project validated: $REQUIRED_PROJECT_REF"
 
-      # --------------------------------------------------------
-      # 3. Validate branch
-      # --------------------------------------------------------
-      - name: Branch guard
+      - name: Validate branch
         run: |
           set -euo pipefail
 
-          REQUIRED_BRANCH="refs/heads/feature/clinpharm-audit-report"
-
-          if [ "$GITHUB_REF" != "$REQUIRED_BRANCH" ]; then
+          if [ "$GITHUB_REF" != "refs/heads/feature/clinpharm-audit-report" ]; then
             echo "ERROR: Wrong branch."
-            echo "Expected: $REQUIRED_BRANCH"
-            echo "Current:  $GITHUB_REF"
+            echo "Current: $GITHUB_REF"
             exit 1
           fi
 
-          echo "Branch guard passed."
+          echo "Branch validation passed."
 
-      # --------------------------------------------------------
-      # 4. Check migration file
-      # --------------------------------------------------------
-      - name: Ensure migration file exists
+      - name: Check migration file
         run: |
           set -euo pipefail
 
@@ -95,12 +56,8 @@ jobs:
             exit 1
           fi
 
-          echo "Migration file found:"
-          echo "$SQL_FILE"
+          echo "Migration file found."
 
-      # --------------------------------------------------------
-      # 5. Install PostgreSQL client
-      # --------------------------------------------------------
       - name: Install PostgreSQL client
         run: |
           set -euo pipefail
@@ -110,47 +67,23 @@ jobs:
 
           psql --version
 
-      # --------------------------------------------------------
-      # 6. Safety scan
-      # --------------------------------------------------------
-      - name: Safety scan for destructive SQL
+      - name: Safety scan
         run: |
           set -euo pipefail
 
           SQL_FILE="supabase/migrations/0001_initial_schema.sql"
 
-          echo "Scanning migration for destructive commands..."
-
           if grep -Eiq \
             "DROP[[:space:]]+DATABASE|DROP[[:space:]]+SCHEMA|TRUNCATE[[:space:]]+TABLE|RESET[[:space:]]+DATABASE" \
             "$SQL_FILE"
           then
-
-            echo "ERROR: Potentially destructive SQL detected."
-            echo "Migration will NOT be executed."
-
-            grep -niE \
-              "DROP[[:space:]]+DATABASE|DROP[[:space:]]+SCHEMA|TRUNCATE[[:space:]]+TABLE|RESET[[:space:]]+DATABASE" \
-              "$SQL_FILE" || true
-
+            echo "ERROR: Destructive SQL detected."
             exit 1
           fi
 
           echo "Safety scan passed."
-          echo "No blocked destructive SQL patterns found."
 
-      # --------------------------------------------------------
-      # 7. Check that the secret exists
-      #
-      # IMPORTANT:
-      # We do NOT use:
-      # if: secrets.SUPABASE_DB_URL != ''
-      #
-      # because GitHub does not allow that expression here.
-      # Instead, the secret is passed through env and checked
-      # inside the shell.
-      # --------------------------------------------------------
-      - name: Verify Supabase DB secret
+      - name: Verify database secret
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
@@ -158,29 +91,18 @@ jobs:
 
           if [ -z "$SUPABASE_DB_URL" ]; then
             echo "ERROR: SUPABASE_DB_URL secret is not configured."
-            echo ""
-            echo "Go to:"
-            echo "GitHub → Settings → Secrets and variables → Actions"
-            echo ""
-            echo "and create a repository secret named:"
-            echo "SUPABASE_DB_URL"
-
+            echo "Add it under:"
+            echo "Settings → Secrets and variables → Actions"
             exit 1
           fi
 
-          echo "SUPABASE_DB_URL secret is configured."
-          echo "The secret value will not be displayed."
+          echo "SUPABASE_DB_URL is configured."
 
-      # --------------------------------------------------------
-      # 8. Verify that the DB host belongs to the staging project
-      # --------------------------------------------------------
       - name: Verify staging database host
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           set -euo pipefail
-
-          REQUIRED_PROJECT_REF="ioekwknwhpeocvrxnwni"
 
           python3 - <<'PY'
           import os
@@ -197,29 +119,25 @@ jobs:
               parsed = urllib.parse.urlparse(url)
               host = parsed.hostname or ""
           except Exception:
-              print("ERROR: Database URL could not be parsed.")
+              print("ERROR: Database URL is malformed.")
               sys.exit(1)
 
           required = "ioekwknwhpeocvrxnwni"
 
           if required not in host:
-              print("ERROR: Database host does not appear to belong to the required staging project.")
-              print("The host was checked silently and was NOT displayed.")
+              print("ERROR: Database host does not match the staging project.")
               sys.exit(1)
 
-          print("Staging database host verification passed.")
+          print("Staging database host verified.")
           PY
 
-      # --------------------------------------------------------
-      # 9. Test database connection
-      # --------------------------------------------------------
-      - name: Test staging database connection
+      - name: Test database connection
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           set -euo pipefail
 
-          echo "Testing connection to Supabase staging..."
+          echo "Testing Supabase staging database connection..."
 
           if ! timeout 15s \
             psql "$SUPABASE_DB_URL" \
@@ -227,18 +145,13 @@ jobs:
             -c "SELECT 1;" \
             >/dev/null 2>&1
           then
-
-            echo "ERROR: Could not connect to the staging database."
-            echo "Check that SUPABASE_DB_URL is the correct PostgreSQL connection string."
+            echo "ERROR: Could not connect to staging database."
             exit 1
           fi
 
-          echo "Database connectivity test passed."
+          echo "Database connection successful."
 
-      # --------------------------------------------------------
-      # 10. Apply migration
-      # --------------------------------------------------------
-      - name: Apply migration to Supabase staging
+      - name: Apply migration
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
@@ -246,36 +159,23 @@ jobs:
 
           SQL_FILE="supabase/migrations/0001_initial_schema.sql"
 
-          echo "================================================"
-          echo "Applying migration to SUPABASE STAGING"
+          echo "Applying migration to Supabase STAGING..."
           echo "Project ref: ioekwknwhpeocvrxnwni"
-          echo "Migration:   $SQL_FILE"
-          echo "================================================"
+          echo "Migration: $SQL_FILE"
 
           psql \
             "$SUPABASE_DB_URL" \
             --set=ON_ERROR_STOP=1 \
             --file="$SQL_FILE"
 
-          echo ""
-          echo "================================================"
           echo "Migration completed successfully."
-          echo "================================================"
 
-      # --------------------------------------------------------
-      # 11. Final confirmation
-      # --------------------------------------------------------
-      - name: Post-run confirmation
+      - name: Final confirmation
         run: |
-          echo "Staging migration workflow completed."
-          echo ""
-          echo "Target project:"
-          echo "ioekwknwhpeocvrxnwni"
-          echo ""
-          echo "Branch:"
-          echo "feature/clinpharm-audit-report"
-          echo ""
-          echo "Migration:"
-          echo "supabase/migrations/0001_initial_schema.sql"
-          echo ""
-          echo "No database URL or secret was printed."
+          echo "=========================================="
+          echo "SUPABASE STAGING MIGRATION COMPLETED"
+          echo "=========================================="
+          echo "Project: ioekwknwhpeocvrxnwni"
+          echo "Branch: feature/clinpharm-audit-report"
+          echo "Migration: 0001_initial_schema.sql"
+          echo "=========================================="
