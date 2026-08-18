@@ -1,0 +1,205 @@
+name: Apply Supabase staging migration
+
+# IMPORTANT:
+# This workflow is intended for staging only.
+# It targets Supabase project:
+# ioekwknwhpeocvrxnwni
+#
+# DO NOT use a production database connection string.
+# SUPABASE_STAGING_DB_URL must be the direct PostgreSQL
+# connection string for the staging project.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  apply-migration:
+    if: "github.ref == 'refs/heads/feature/clinpharm-audit-report'"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/clinpharm-audit-report
+
+      - name: Validate explicit target project ref
+        run: |
+          set -euo pipefail
+
+          REQUIRED_PROJECT_REF="ioekwknwhpeocvrxnwni"
+          CONFIGURED_PROJECT_REF="ioekwknwhpeocvrxnwni"
+
+          if [ "$CONFIGURED_PROJECT_REF" != "$REQUIRED_PROJECT_REF" ]; then
+            echo "ERROR: configured project ref does not match required staging project ref" >&2
+            exit 1
+          fi
+
+          echo "Target project ref validated."
+
+      - name: Branch guard
+        run: |
+          set -euo pipefail
+
+          BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+
+          if [ "$BRANCH_NAME" != "feature/clinpharm-audit-report" ]; then
+            echo "ERROR: This workflow must run only on feature/clinpharm-audit-report." >&2
+            echo "Current branch: $BRANCH_NAME" >&2
+            exit 1
+          fi
+
+          echo "Branch guard passed."
+
+      - name: Ensure migration file exists
+        run: |
+          set -euo pipefail
+
+          SQL_FILE="supabase/migrations/0001_initial_schema.sql"
+
+          if [ ! -f "$SQL_FILE" ]; then
+            echo "ERROR: Migration file not found: $SQL_FILE" >&2
+            exit 1
+          fi
+
+          echo "Migration file located: $SQL_FILE"
+
+      - name: Install PostgreSQL client
+        run: |
+          set -euo pipefail
+
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql-client
+
+          psql --version
+
+      - name: Safety scan for destructive SQL
+        run: |
+          set -euo pipefail
+
+          SQL_FILE="supabase/migrations/0001_initial_schema.sql"
+
+          if grep -Eiq \
+            "DROP[[:space:]]+DATABASE|DROP[[:space:]]+SCHEMA|RESET[[:space:]]+DATABASE|TRUNCATE[[:space:]]+TABLE" \
+            "$SQL_FILE"
+          then
+            echo "ERROR: Destructive SQL pattern detected. Migration aborted." >&2
+
+            grep -niE \
+              "DROP[[:space:]]+DATABASE|DROP[[:space:]]+SCHEMA|RESET[[:space:]]+DATABASE|TRUNCATE[[:space:]]+TABLE" \
+              "$SQL_FILE" || true
+
+            exit 1
+          fi
+
+          echo "No blocked destructive SQL patterns found."
+
+      - name: Verify staging database secret exists
+        env:
+          SUPABASE_STAGING_DB_URL: ${{ secrets.SUPABASE_STAGING_DB_URL }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$SUPABASE_STAGING_DB_URL" ]; then
+            echo "ERROR: SUPABASE_STAGING_DB_URL secret is not configured." >&2
+            echo "No database operation will be performed." >&2
+            exit 1
+          fi
+
+          echo "SUPABASE_STAGING_DB_URL is configured."
+
+      - name: Verify database host belongs to staging project
+        env:
+          SUPABASE_STAGING_DB_URL: ${{ secrets.SUPABASE_STAGING_DB_URL }}
+          REQUIRED_PROJECT_REF: ioekwknwhpeocvrxnwni
+        run: |
+          set -euo pipefail
+
+          python3 - <<'PY'
+          import os
+          import sys
+          import urllib.parse
+
+          url = os.environ.get("SUPABASE_STAGING_DB_URL", "")
+          required = os.environ.get("REQUIRED_PROJECT_REF", "")
+
+          if not url or not required:
+              sys.exit(2)
+
+          try:
+              parsed = urllib.parse.urlparse(url)
+              host = parsed.hostname or ""
+          except Exception:
+              sys.exit(2)
+
+          if required not in host:
+              sys.exit(3)
+
+          sys.exit(0)
+          PY
+
+          RC=$?
+
+          if [ "$RC" -eq 0 ]; then
+            echo "Database host verification passed."
+          elif [ "$RC" -eq 2 ]; then
+            echo "ERROR: Database URL is empty or malformed." >&2
+            exit 1
+          elif [ "$RC" -eq 3 ]; then
+            echo "ERROR: Database host does not contain the required staging project ref." >&2
+            echo "Required project: ioekwknwhpeocvrxnwni" >&2
+            exit 1
+          else
+            echo "ERROR: Unexpected database host verification failure." >&2
+            exit 1
+          fi
+
+      - name: Test staging database connectivity
+        env:
+          SUPABASE_STAGING_DB_URL: ${{ secrets.SUPABASE_STAGING_DB_URL }}
+        run: |
+          set -euo pipefail
+
+          TIMEOUT=10
+
+          if ! timeout "${TIMEOUT}s" \
+            psql "$SUPABASE_STAGING_DB_URL" \
+            -tA \
+            -c "SELECT 1;" \
+            >/dev/null 2>&1
+          then
+            echo "ERROR: Could not connect to the staging database." >&2
+            echo "No migration was applied." >&2
+            exit 1
+          fi
+
+          echo "Staging database connectivity test passed."
+
+      - name: Apply migration to Supabase staging
+        env:
+          SUPABASE_STAGING_DB_URL: ${{ secrets.SUPABASE_STAGING_DB_URL }}
+        run: |
+          set -euo pipefail
+
+          echo "Applying migration to Supabase staging..."
+          echo "Target project: ioekwknwhpeocvrxnwni"
+          echo "Migration: supabase/migrations/0001_initial_schema.sql"
+
+          psql \
+            "$SUPABASE_STAGING_DB_URL" \
+            --set=ON_ERROR_STOP=1 \
+            --file=supabase/migrations/0001_initial_schema.sql
+
+          echo "Migration SQL executed successfully."
+
+      - name: Post-run safety note
+        run: |
+          echo "Staging migration workflow completed."
+          echo "Target project: ioekwknwhpeocvrxnwni"
+          echo "Branch: feature/clinpharm-audit-report"
+          echo "Migration: supabase/migrations/0001_initial_schema.sql"
+          echo "No service_role key is used by the client."
+          echo "No production database is intentionally targeted."
