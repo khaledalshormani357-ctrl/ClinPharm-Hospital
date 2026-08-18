@@ -1,4 +1,4 @@
-name: Apply Supabase staging migration
+name: Verify ClinPharm Staging
 
 on:
   workflow_dispatch:
@@ -7,34 +7,179 @@ permissions:
   contents: read
 
 jobs:
-  apply-migration:
-    if: github.ref == 'refs/heads/feature/clinpharm-audit-report'
+  verify:
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout feature branch
         uses: actions/checkout@v4
         with:
           ref: feature/clinpharm-audit-report
 
-      - name: Validate target project
+      - name: Verify branch
+        run: |
+          set -euo pipefail
+
+          if [ "$GITHUB_REF" != "refs/heads/feature/clinpharm-audit-report" ]; then
+            echo "ERROR: Wrong branch."
+            echo "Current: $GITHUB_REF"
+            exit 1
+          fi
+
+          echo "Branch check passed."
+
+      - name: Verify migration file
+        run: |
+          set -euo pipefail
+
+          if [ ! -f supabase/migrations/0001_initial_schema.sql ]; then
+            echo "ERROR: Migration file not found."
+            exit 1
+          fi
+
+          echo "Migration file found."
+
+      - name: Install PostgreSQL client
+        run: |
+          set -euo pipefail
+
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql-client
+
+          psql --version
+
+      - name: Check SUPABASE_DB_URL secret
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "ERROR: SUPABASE_DB_URL GitHub Secret is not configured."
+            exit 1
+          fi
+
+          echo "SUPABASE_DB_URL is configured."
+
+      - name: Check database connectivity
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+
+          echo "Testing database connection..."
+
+          if ! timeout 15s psql \
+            "$SUPABASE_DB_URL" \
+            -tA \
+            -c "SELECT 1;" \
+            >/dev/null 2>&1; then
+
+            echo "ERROR: Could not connect to the Supabase database."
+            exit 1
+          fi
+
+          echo "Database connection successful."
+
+      - name: Safety scan migration
+        run: |
+          set -euo pipefail
+
+          SQL_FILE="supabase/migrations/0001_initial_schema.sql"
+
+          echo "Scanning migration for destructive commands..."
+
+          if grep -Eiq \
+            "DROP[[:space:]]+DATABASE|DROP[[:space:]]+SCHEMA|TRUNCATE[[:space:]]+TABLE|RESET[[:space:]]+DATABASE" \
+            "$SQL_FILE"; then
+
+            echo "ERROR: Potentially destructive SQL detected."
+            exit 1
+          fi
+
+          echo "Safety scan passed."
+
+      - name: Verify Supabase staging project
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           set -euo pipefail
 
           REQUIRED_PROJECT_REF="ioekwknwhpeocvrxnwni"
-          CONFIGURED_PROJECT_REF="ioekwknwhpeocvrxnwni"
 
-          if [ "$CONFIGURED_PROJECT_REF" != "$REQUIRED_PROJECT_REF" ]; then
-            echo "ERROR: Project reference mismatch."
+          echo "Checking Supabase staging project..."
+
+          HOST=$(python3 -c '
+          import os
+          import urllib.parse
+
+          url = os.environ["SUPABASE_DB_URL"]
+          parsed = urllib.parse.urlparse(url)
+
+          print(parsed.hostname or "")
+          ')
+
+          if [[ "$HOST" != *"$REQUIRED_PROJECT_REF"* ]]; then
+            echo "ERROR: Database host does not match the expected staging project."
             exit 1
           fi
 
-          echo "Target project validated: $REQUIRED_PROJECT_REF"
+          echo "Supabase staging project verified."
 
-      - name: Validate branch
+      - name: Verify database schema
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           set -euo pipefail
+
+          echo "Checking database schema..."
+
+          psql \
+            "$SUPABASE_DB_URL" \
+            --set=ON_ERROR_STOP=1 \
+            -c "
+              SELECT
+                table_schema,
+                table_name
+              FROM information_schema.tables
+              WHERE table_schema = 'public'
+              ORDER BY table_name;
+            "
+
+          echo "Schema verification completed."
+
+      - name: Verify required tables
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+
+          echo "Checking required tables..."
+
+          psql \
+            "$SUPABASE_DB_URL" \
+            --set=ON_ERROR_STOP=1 \
+            -c "
+              SELECT
+                table_name
+              FROM information_schema.tables
+              WHERE table_schema = 'public'
+              AND table_name IN (
+                'profiles',
+                'guidelines'
+              )
+              ORDER BY table_name;
+            "
+
+          echo "Required table check completed."
+
+      - name: Final verification
+        run: |
+          echo "========================================"
+          echo "ClinPharm staging verification complete"
+          echo "Project: ioekwknwhpeocvrxnwni"
+          echo "Branch: feature/clinpharm-audit-report"
+          echo "========================================"          set -euo pipefail
 
           if [ "$GITHUB_REF" != "refs/heads/feature/clinpharm-audit-report" ]; then
             echo "ERROR: Wrong branch."
