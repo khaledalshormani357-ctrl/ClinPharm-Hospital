@@ -74,4 +74,10 @@ Never use `service_role` in client code or `VITE_*`/`EXPO_PUBLIC_*` variables. R
 
 After the isolated Manus staging application was configured and the user completed initial staging testing, an administrative **read-only aggregate** check returned three Auth users, three matching profile rows, and six patient rows owned by two distinct user IDs. No user identifiers, emails, passwords, tokens, or clinical record contents were read.
 
-This confirms that the Auth trigger created matching profile records and that staged patient rows have non-null `owner_id` values associated with multiple users. It does **not** independently prove an RLS denial path because the management connection used for this aggregate check bypasses end-user RLS. The separate staging app displayed a persistent `STAGING` marker and a non-production preview URL; its browser session must still be authenticated as each test user to record a true allow/deny RLS test.
+This confirms that the Auth trigger created matching profile records and that staged patient rows have non-null `owner_id` values associated with multiple users. The management connection used for the aggregate check bypasses end-user RLS, so it cannot itself prove a denial path.
+
+### End-user RLS isolation result
+
+The staging operator then completed the two-user application test: after signing in as the second staging user, the first user's patient data was not visible. This confirms the required cross-user read-denial path through the isolated staging application. No user identifiers, credentials, tokens, or clinical record contents were collected. **RLS isolation is VERIFIED for the tested patient-read scenario.**
+
+The separate staging app displayed a persistent `STAGING` marker and a non-production preview URL. Update/delete and non-patient clinical-record denial paths should be exercised in the same manner before a production rollout.
