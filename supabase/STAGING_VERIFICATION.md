@@ -69,3 +69,9 @@ VITE_SUPABASE_ANON_KEY
 ```
 
 Never use `service_role` in client code or `VITE_*`/`EXPO_PUBLIC_*` variables. Runtime Auth and RLS isolation tests require two already authorized staging users and must run only against this staging project.
+
+## Post-setup runtime indicators
+
+After the isolated Manus staging application was configured and the user completed initial staging testing, an administrative **read-only aggregate** check returned three Auth users, three matching profile rows, and six patient rows owned by two distinct user IDs. No user identifiers, emails, passwords, tokens, or clinical record contents were read.
+
+This confirms that the Auth trigger created matching profile records and that staged patient rows have non-null `owner_id` values associated with multiple users. It does **not** independently prove an RLS denial path because the management connection used for this aggregate check bypasses end-user RLS. The separate staging app displayed a persistent `STAGING` marker and a non-production preview URL; its browser session must still be authenticated as each test user to record a true allow/deny RLS test.
